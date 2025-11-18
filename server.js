@@ -53,7 +53,7 @@ const upload = multer({
   }
 });
 
-// Authentication middleware
+// Authentication middleware - supports both admin and member tokens
 const authenticateToken = (req, res, next) => {
   const token = req.headers['authorization']?.split(' ')[1] || req.session.token;
   
@@ -61,10 +61,22 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ error: 'Access denied' });
   }
 
+  // Try to verify with admin secret first
   jwt.verify(token, SECRET_KEY, (err, user) => {
-    if (err) return res.status(403).json({ error: 'Invalid token' });
-    req.user = user;
-    next();
+    if (!err) {
+      req.user = user;
+      return next();
+    }
+    
+    // If admin verification fails, try member secret
+    const MEMBER_SECRET = 'koperasi-nu-vibes-secret-key-2024';
+    jwt.verify(token, MEMBER_SECRET, (err2, user2) => {
+      if (err2) {
+        return res.status(403).json({ error: 'Invalid token' });
+      }
+      req.user = user2;
+      next();
+    });
   });
 };
 
@@ -965,12 +977,6 @@ app.get('/api/koperasi/logo', (req, res) => {
     res.json({ logo: row?.logo || null });
   });
 });
-
-// Start server
-const fs = require('fs');
-if (!fs.existsSync('./uploads')) {
-  fs.mkdirSync('./uploads');
-}
 
 // ===== PENGUMUMAN ROUTES =====
 app.get('/api/pengumuman', authenticateToken, (req, res) => {

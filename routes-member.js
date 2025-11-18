@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 
-const JWT_SECRET = 'koperasi-nu-vibes-secret-key-2024';
+const JWT_SECRET = process.env.JWT_SECRET || 'koperasi-nu-vibes-secret-key-2024';
 
 // Multer configuration for file upload
 const storage = multer.diskStorage({
