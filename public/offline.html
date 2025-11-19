@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline - Koperasi NU Vibes</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #F1F8E9 0%, #E8F5E9 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .offline-container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(46, 125, 50, 0.2);
+      padding: 40px;
+      max-width: 500px;
+      text-align: center;
+    }
+
+    .offline-icon {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 30px;
+      background: linear-gradient(135deg, #2E7D32, #4CAF50);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 60px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+      }
+    }
+
+    h1 {
+      color: #2E7D32;
+      font-size: 28px;
+      margin-bottom: 16px;
+    }
+
+    p {
+      color: #666;
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+
+    .btn-retry {
+      background: linear-gradient(135deg, #2E7D32, #4CAF50);
+      color: white;
+      border: none;
+      padding: 14px 32px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+    }
+
+    .btn-retry:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(46, 125, 50, 0.4);
+    }
+
+    .btn-retry:active {
+      transform: translateY(0);
+    }
+
+    .tips {
+      margin-top: 30px;
+      padding: 20px;
+      background: #F1F8E9;
+      border-radius: 12px;
+      text-align: left;
+    }
+
+    .tips h3 {
+      color: #2E7D32;
+      font-size: 16px;
+      margin-bottom: 12px;
+    }
+
+    .tips ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .tips li {
+      color: #666;
+      font-size: 14px;
+      padding: 6px 0;
+      padding-left: 24px;
+      position: relative;
+    }
+
+    .tips li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #4CAF50;
+      font-weight: bold;
+    }
+
+    .connection-status {
+      margin-top: 20px;
+      padding: 12px;
+      background: #FFF3E0;
+      border-radius: 8px;
+      color: #F57C00;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .connection-status.online {
+      background: #E8F5E9;
+      color: #2E7D32;
+    }
+
+    @media (max-width: 600px) {
+      .offline-container {
+        padding: 30px 20px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      .offline-icon {
+        width: 100px;
+        height: 100px;
+        font-size: 50px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="offline-container">
+    <div class="offline-icon">
+      📡
+    </div>
+    
+    <h1>Tidak Ada Koneksi Internet</h1>
+    <p>Maaf, Anda sedang offline. Beberapa fitur mungkin tidak tersedia saat ini.</p>
+    
+    <button class="btn-retry" onclick="location.reload()">
+      🔄 Coba Lagi
+    </button>
+
+    <div class="connection-status" id="connectionStatus">
+      <span>⚠️</span>
+      <span>Memeriksa koneksi...</span>
+    </div>
+
+    <div class="tips">
+      <h3>💡 Tips:</h3>
+      <ul>
+        <li>Periksa koneksi WiFi atau data seluler Anda</li>
+        <li>Pastikan mode pesawat tidak aktif</li>
+        <li>Coba pindah ke area dengan sinyal lebih baik</li>
+        <li>Beberapa halaman yang sudah dibuka masih bisa diakses</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // Check connection status
+    function updateConnectionStatus() {
+      const statusEl = document.getElementById('connectionStatus');
+      
+      if (navigator.onLine) {
+        statusEl.className = 'connection-status online';
+        statusEl.innerHTML = '<span>✓</span><span>Koneksi tersedia! Klik "Coba Lagi" untuk melanjutkan</span>';
+      } else {
+        statusEl.className = 'connection-status';
+        statusEl.innerHTML = '<span>⚠️</span><span>Masih offline</span>';
+      }
+    }
+
+    // Update status on load
+    updateConnectionStatus();
+
+    // Listen for connection changes
+    window.addEventListener('online', updateConnectionStatus);
+    window.addEventListener('offline', updateConnectionStatus);
+
+    // Auto reload when back online
+    window.addEventListener('online', () => {
+      setTimeout(() => {
+        location.reload();
+      }, 1000);
+    });
+
+    // Check connection every 5 seconds
+    setInterval(updateConnectionStatus, 5000);
+  </script>
+</body>
+</html>
