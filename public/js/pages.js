@@ -1289,6 +1289,9 @@ function renderSimpananTable(anggota) {
           <button class="btn btn-secondary" onclick="cetakSimpananUnified()">
             <i data-feather="printer"></i> Cetak
           </button>
+          <button class="btn btn-info" onclick="showImportSimpananMenu()">
+            <i data-feather="upload"></i> Import Excel
+          </button>
           <button class="btn btn-primary" onclick="tambahSimpananUnified()">
             <i data-feather="plus"></i> Tambah Transaksi
           </button>
@@ -1709,6 +1712,9 @@ window.renderPartisipasiAnggota = async function() {
           </button>
           <button class="btn btn-secondary" onclick="cetakPartisipasiUnified()">
             <i data-feather="printer"></i> Cetak
+          </button>
+          <button class="btn btn-info" onclick="importPartisipasiExcel()">
+            <i data-feather="upload"></i> Import Excel
           </button>
           <button class="btn btn-primary" onclick="tambahPartisipasi()">
             <i data-feather="plus"></i> Tambah Partisipasi

@@ -636,3 +636,110 @@ input[type="file"]:focus {
     width: 100%;
   }
 }
+
+/* Payment Note Styles */
+.payment-note {
+  background: linear-gradient(135deg, #E8F5E9 0%, #F1F8E9 100%);
+  border: 2px solid var(--primary-color);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.payment-note h4 {
+  color: var(--primary-dark);
+  font-size: 18px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.payment-note h4::before {
+  content: "💰";
+  font-size: 24px;
+}
+
+.payment-note ul {
+  list-style: none;
+  margin-bottom: 20px;
+  padding-left: 0;
+}
+
+.payment-note ul li {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(46, 125, 50, 0.1);
+  font-size: 15px;
+  color: var(--text-dark);
+}
+
+.payment-note ul li:last-child {
+  border-bottom: none;
+}
+
+.payment-note ul li strong {
+  color: var(--primary-dark);
+  font-weight: 600;
+}
+
+.bank-info {
+  background: var(--white);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.bank-info p {
+  font-weight: 600;
+  color: var(--primary-dark);
+  margin-bottom: 12px;
+  font-size: 15px;
+}
+
+.bank-accounts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bank-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: linear-gradient(135deg, #F1F8E9 0%, #E8F5E9 100%);
+  border-radius: 6px;
+  border-left: 4px solid var(--primary-color);
+}
+
+.bank-name {
+  font-size: 13px;
+  color: var(--gray);
+  font-weight: 500;
+}
+
+.bank-account {
+  font-size: 15px;
+  color: var(--text-dark);
+}
+
+.bank-account strong {
+  color: var(--primary-dark);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+}
+
+@media (max-width: 768px) {
+  .payment-note {
+    padding: 16px;
+  }
+  
+  .payment-note h4 {
+    font-size: 16px;
+  }
+  
+  .bank-item {
+    padding: 10px;
+  }
+}

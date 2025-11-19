@@ -214,9 +214,11 @@ window.tambahPengurus = async function() {
             <option value="Ketua">Ketua</option>
             <option value="Wakil Ketua">Wakil Ketua</option>
             <option value="Sekretaris">Sekretaris</option>
+            <option value="Wakil Sekretaris">Wakil Sekretaris</option>
             <option value="Bendahara">Bendahara</option>
+            <option value="Wakil Bendahara">Wakil Bendahara</option>
             <option value="Pengawas">Pengawas</option>
-            <option value="Anggota Pengurus">Anggota Pengurus</option>
+            <option value="Divisi Usaha">Divisi Usaha</option>
           </select>
         </div>
         
@@ -303,9 +305,11 @@ window.editPengurus = async function(id) {
             <option value="Ketua" ${item.jabatan === 'Ketua' ? 'selected' : ''}>Ketua</option>
             <option value="Wakil Ketua" ${item.jabatan === 'Wakil Ketua' ? 'selected' : ''}>Wakil Ketua</option>
             <option value="Sekretaris" ${item.jabatan === 'Sekretaris' ? 'selected' : ''}>Sekretaris</option>
+            <option value="Wakil Sekretaris" ${item.jabatan === 'Wakil Sekretaris' ? 'selected' : ''}>Wakil Sekretaris</option>
             <option value="Bendahara" ${item.jabatan === 'Bendahara' ? 'selected' : ''}>Bendahara</option>
+            <option value="Wakil Bendahara" ${item.jabatan === 'Wakil Bendahara' ? 'selected' : ''}>Wakil Bendahara</option>
             <option value="Pengawas" ${item.jabatan === 'Pengawas' ? 'selected' : ''}>Pengawas</option>
-            <option value="Anggota Pengurus" ${item.jabatan === 'Anggota Pengurus' ? 'selected' : ''}>Anggota Pengurus</option>
+            <option value="Divisi Usaha" ${item.jabatan === 'Divisi Usaha' ? 'selected' : ''}>Divisi Usaha</option>
           </select>
         </div>
         

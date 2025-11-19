@@ -28,8 +28,8 @@ window.renderSimpanan = async function(jenis) {
           <button class="btn btn-secondary" onclick="cetakSimpanan('${jenis}')">
             <i data-feather="printer"></i> Cetak
           </button>
-          <button class="btn btn-info" onclick="importSimpanan('${jenis}')">
-            <i data-feather="upload"></i> Import
+          <button class="btn btn-info" onclick="importSimpananExcel('${jenis}')">
+            <i data-feather="upload"></i> Import Excel
           </button>
           <button class="btn btn-primary" onclick="tambahSimpanan('${jenis}')">
             <i data-feather="plus"></i> Tambah Transaksi
@@ -414,6 +414,9 @@ window.renderPartisipasiAnggota = async function() {
           <button class="btn btn-secondary" onclick="cetakPartisipasi()">
             <i data-feather="printer"></i> Cetak
           </button>
+          <button class="btn btn-info" onclick="importPartisipasiExcel()">
+            <i data-feather="upload"></i> Import Excel
+          </button>
           <button class="btn btn-primary" onclick="tambahPartisipasi()">
             <i data-feather="plus"></i> Tambah Partisipasi
           </button>
@@ -662,6 +665,9 @@ window.renderPenjualan = async function() {
           <button class="btn btn-secondary" onclick="cetakPenjualan()">
             <i data-feather="printer"></i> Cetak
           </button>
+          <button class="btn btn-info" onclick="importPenjualanExcel()">
+            <i data-feather="upload"></i> Import Excel
+          </button>
           <button class="btn btn-primary" onclick="tambahPenjualan()">
             <i data-feather="plus"></i> Tambah Penjualan
           </button>
@@ -838,6 +844,9 @@ window.renderPengeluaran = async function() {
           </button>
           <button class="btn btn-secondary" onclick="cetakPengeluaran()">
             <i data-feather="printer"></i> Cetak
+          </button>
+          <button class="btn btn-info" onclick="importPengeluaranExcel()">
+            <i data-feather="upload"></i> Import Excel
           </button>
           <button class="btn btn-primary" onclick="tambahPengeluaran()">
             <i data-feather="plus"></i> Tambah Pengeluaran
@@ -1404,6 +1413,9 @@ window.renderPendapatanLain = async function() {
           </button>
           <button class="btn btn-secondary" onclick="cetakPendapatanLain()">
             <i data-feather="printer"></i> Cetak
+          </button>
+          <button class="btn btn-info" onclick="importPendapatanLainExcel()">
+            <i data-feather="upload"></i> Import Excel
           </button>
           <button class="btn btn-primary" onclick="tambahPendapatanLain()">
             <i data-feather="plus"></i> Tambah Pendapatan
