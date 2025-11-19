@@ -27,6 +27,19 @@
   <script src="https://unpkg.com/feather-icons"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
   <script src="/js/pwa-install.js" defer></script>
+  
+  <style>
+    /* Tombol Halaman Utama Gold */
+    .btn-landing-page:hover {
+      background: linear-gradient(135deg, #FFA500, #FF8C00) !important;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(255, 215, 0, 0.5) !important;
+    }
+    
+    .btn-landing-page:active {
+      transform: translateY(0);
+    }
+  </style>
 </head>
 <body>
   <div class="dashboard-container">
@@ -135,6 +148,12 @@
         <a href="#" class="nav-item" data-page="publikasi">
           <i data-feather="book-open" class="nav-icon"></i>
           <span class="nav-text">Publikasi</span>
+        </a>
+        
+        <!-- Tombol Halaman Utama -->
+        <a href="/landing.html" class="nav-item btn-landing-page" style="background: linear-gradient(135deg, #FFD700, #FFA500); color: #1B5E20; font-weight: 600; margin: 10px 15px; border-radius: 8px; box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3); border: none; transition: all 0.3s; text-align: center;">
+          <i data-feather="globe" class="nav-icon" style="color: #1B5E20;"></i>
+          <span class="nav-text">Halaman Utama</span>
         </a>
         
       </nav>
