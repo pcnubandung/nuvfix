@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Create Placeholder Icons</title>
+</head>
+<body>
+  <h1>Creating placeholder icons...</h1>
+  <div id="status"></div>
+  <div id="downloads"></div>
+
+  <script>
+    const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+    const downloads = document.getElementById('downloads');
+    const status = document.getElementById('status');
+
+    function createIcon(size) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      // Background gradient
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#2E7D32');
+      gradient.addColorStop(1, '#4CAF50');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+
+      // Circle border
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.lineWidth = size * 0.05;
+      ctx.beginPath();
+      ctx.arc(size/2, size/2, size * 0.4, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Text
+      ctx.fillStyle = 'white';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      // NU
+      ctx.font = `bold ${size * 0.25}px Arial`;
+      ctx.fillText('NU', size/2, size * 0.4);
+      
+      // VIBES
+      ctx.font = `bold ${size * 0.15}px Arial`;
+      ctx.fillText('VIBES', size/2, size * 0.65);
+
+      return canvas;
+    }
+
+    function downloadIcon(canvas, size) {
+      const link = document.createElement('a');
+      link.download = `icon-${size}x${size}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.textContent = `Download icon-${size}x${size}.png`;
+      link.style.display = 'block';
+      link.style.margin = '10px';
+      link.style.padding = '10px';
+      link.style.background = '#2E7D32';
+      link.style.color = 'white';
+      link.style.textDecoration = 'none';
+      link.style.borderRadius = '5px';
+      downloads.appendChild(link);
+      
+      // Auto download
+      link.click();
+    }
+
+    // Generate all icons
+    status.textContent = 'Generating icons...';
+    
+    setTimeout(() => {
+      sizes.forEach(size => {
+        const canvas = createIcon(size);
+        downloadIcon(canvas, size);
+      });
+      
+      status.textContent = 'All icons generated! Check your downloads folder.';
+      status.style.color = 'green';
+      status.style.fontWeight = 'bold';
+      
+      // Show instruction
+      const instruction = document.createElement('div');
+      instruction.style.marginTop = '20px';
+      instruction.style.padding = '20px';
+      instruction.style.background = '#E8F5E9';
+      instruction.style.borderRadius = '8px';
+      instruction.innerHTML = `
+        <h3>Next Steps:</h3>
+        <ol>
+          <li>All icons have been downloaded to your Downloads folder</li>
+          <li>Move all icon-*.png files to <code>public/icons/</code> folder</li>
+          <li>Commit and push:
+            <pre style="background: #f5f5f5; padding: 10px; border-radius: 5px;">
+git add public/icons/
+git commit -m "Add PWA placeholder icons"
+git push origin main
+            </pre>
+          </li>
+          <li>Wait for Railway to deploy (2-3 minutes)</li>
+          <li>Test PWA install again</li>
+        </ol>
+      `;
+      document.body.appendChild(instruction);
+    }, 500);
+  </script>
+</body>
+</html>
