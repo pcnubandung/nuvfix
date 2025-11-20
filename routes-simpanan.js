@@ -2,6 +2,34 @@ const express = require('express');
 const router = express.Router();
 const db = require('./database');
 
+// Get All Simpanan (untuk Buku Kas)
+router.get('/all', (req, res) => {
+  // Get all simpanan from all tables
+  const queries = [
+    `SELECT id, anggota_id, jumlah, tanggal_transaksi, metode_pembayaran, keterangan, 'Pokok' as jenis_simpanan 
+     FROM simpanan_pokok`,
+    `SELECT id, anggota_id, jumlah, tanggal_transaksi, metode_pembayaran, keterangan, 'Wajib' as jenis_simpanan 
+     FROM simpanan_wajib`,
+    `SELECT id, anggota_id, jumlah, tanggal_transaksi, metode_pembayaran, keterangan, 'Khusus' as jenis_simpanan 
+     FROM simpanan_khusus`,
+    `SELECT id, anggota_id, jumlah, tanggal_transaksi, metode_pembayaran, keterangan, 'Sukarela' as jenis_simpanan 
+     FROM simpanan_sukarela`
+  ];
+  
+  const unionQuery = queries.join(' UNION ALL ');
+  const finalQuery = `
+    SELECT s.*, a.nama_lengkap, a.nomor_anggota 
+    FROM (${unionQuery}) s
+    JOIN anggota a ON s.anggota_id = a.id
+    ORDER BY s.tanggal_transaksi DESC
+  `;
+  
+  db.all(finalQuery, [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
 // Simpanan Pokok
 router.get('/pokok', (req, res) => {
   db.all(`SELECT sp.*, a.nama_lengkap, a.nomor_anggota 

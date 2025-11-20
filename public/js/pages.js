@@ -3129,6 +3129,7 @@ window.renderLaporan = async function() {
             <option value="labarugi">Laporan Laba/Rugi</option>
             <option value="neraca">Neraca</option>
             <option value="aruskas">Laporan Arus Kas</option>
+            <option value="bukukas">Buku Kas</option>
           </select>
         </div>
         
@@ -3802,6 +3803,205 @@ window.tampilkanLaporan = async function() {
           </table>
         </div>
       `;
+    } else if (jenis === 'bukukas') {
+      // Buku Kas
+      const simpananPokok = await API.get('/api/simpanan/pokok');
+      const simpananWajib = await API.get('/api/simpanan/wajib');
+      const simpananKhusus = await API.get('/api/simpanan/khusus');
+      const simpananSukarela = await API.get('/api/simpanan/sukarela');
+      const penjualan = await API.get('/api/transaksi/penjualan');
+      const pengeluaran = await API.get('/api/transaksi/pengeluaran');
+      const pendapatanLain = await API.get('/api/transaksi/pendapatan-lain');
+      
+      // Combine all transactions
+      let allTransactions = [];
+      
+      // Penerimaan dari Simpanan
+      simpananPokok.forEach(s => {
+        allTransactions.push({
+          tanggal: s.tanggal_transaksi,
+          uraian: `Simpanan Pokok - ${s.nama_lengkap} (${s.nomor_anggota})${s.keterangan ? ' - ' + s.keterangan : ''}`,
+          penerimaan: parseFloat(s.jumlah || 0),
+          pengeluaran: 0
+        });
+      });
+      
+      simpananWajib.forEach(s => {
+        allTransactions.push({
+          tanggal: s.tanggal_transaksi,
+          uraian: `Simpanan Wajib - ${s.nama_lengkap} (${s.nomor_anggota})${s.keterangan ? ' - ' + s.keterangan : ''}`,
+          penerimaan: parseFloat(s.jumlah || 0),
+          pengeluaran: 0
+        });
+      });
+      
+      simpananKhusus.forEach(s => {
+        allTransactions.push({
+          tanggal: s.tanggal_transaksi,
+          uraian: `Simpanan Khusus - ${s.nama_lengkap} (${s.nomor_anggota})${s.keterangan ? ' - ' + s.keterangan : ''}`,
+          penerimaan: parseFloat(s.jumlah || 0),
+          pengeluaran: 0
+        });
+      });
+      
+      simpananSukarela.forEach(s => {
+        if (s.jenis === 'Setoran') {
+          allTransactions.push({
+            tanggal: s.tanggal_transaksi,
+            uraian: `Simpanan Sukarela (Setoran) - ${s.nama_lengkap} (${s.nomor_anggota})${s.keterangan ? ' - ' + s.keterangan : ''}`,
+            penerimaan: parseFloat(s.jumlah || 0),
+            pengeluaran: 0
+          });
+        } else {
+          allTransactions.push({
+            tanggal: s.tanggal_transaksi,
+            uraian: `Simpanan Sukarela (Penarikan) - ${s.nama_lengkap} (${s.nomor_anggota})${s.keterangan ? ' - ' + s.keterangan : ''}`,
+            penerimaan: 0,
+            pengeluaran: parseFloat(s.jumlah || 0)
+          });
+        }
+      });
+      
+      // Penerimaan dari Penjualan
+      penjualan.forEach(p => {
+        allTransactions.push({
+          tanggal: p.tanggal_transaksi,
+          uraian: `Hasil Penjualan${p.nama_usaha ? ' - ' + p.nama_usaha : ''}${p.keterangan ? ' - ' + p.keterangan : ''}`,
+          penerimaan: parseFloat(p.jumlah_penjualan || 0),
+          pengeluaran: 0
+        });
+      });
+      
+      // Penerimaan dari Pendapatan Lain
+      pendapatanLain.forEach(p => {
+        allTransactions.push({
+          tanggal: p.tanggal_transaksi,
+          uraian: `${p.kategori}${p.nama_usaha ? ' - ' + p.nama_usaha : ''}${p.keterangan ? ' - ' + p.keterangan : ''}`,
+          penerimaan: parseFloat(p.jumlah || 0),
+          pengeluaran: 0
+        });
+      });
+      
+      // Pengeluaran
+      pengeluaran.forEach(p => {
+        allTransactions.push({
+          tanggal: p.tanggal_transaksi,
+          uraian: `${p.kategori}${p.nama_usaha ? ' - ' + p.nama_usaha : ''}${p.keterangan ? ' - ' + p.keterangan : ''}`,
+          penerimaan: 0,
+          pengeluaran: parseFloat(p.jumlah || 0)
+        });
+      });
+      
+      // Filter by periode
+      if (periode === 'harian' && tanggal) {
+        allTransactions = allTransactions.filter(t => t.tanggal === tanggal);
+      } else if (periode === 'bulanan' && bulan) {
+        allTransactions = allTransactions.filter(t => t.tanggal && t.tanggal.startsWith(`${tahun}-${bulan}`));
+      } else if (periode === 'tahunan') {
+        allTransactions = allTransactions.filter(t => t.tanggal && t.tanggal.startsWith(tahun));
+      }
+      
+      // Sort by date
+      allTransactions.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+      
+      // Calculate running balance
+      let saldo = 0;
+      allTransactions.forEach(t => {
+        saldo += t.penerimaan - t.pengeluaran;
+        t.saldo = saldo;
+      });
+      
+      // Calculate totals
+      const totalPenerimaan = allTransactions.reduce((sum, t) => sum + t.penerimaan, 0);
+      const totalPengeluaran = allTransactions.reduce((sum, t) => sum + t.pengeluaran, 0);
+      const saldoAkhir = totalPenerimaan - totalPengeluaran;
+      
+      // Format periode untuk tampilan
+      let periodeText = '';
+      if (periode === 'harian' && tanggal) {
+        const date = new Date(tanggal);
+        const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        periodeText = `${date.getDate()} ${namaBulan[date.getMonth()]} ${date.getFullYear()}`;
+      } else if (periode === 'bulanan' && bulan) {
+        const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        periodeText = `${namaBulan[parseInt(bulan) - 1]} ${tahun}`;
+      } else {
+        periodeText = `Tahun ${tahun}`;
+      }
+      
+      laporanContent.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h4 style="color: var(--primary-teal); margin-bottom: 5px;">BUKU KAS</h4>
+          <p style="color: #666;">Periode: ${periodeText}</p>
+        </div>
+        
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 50px;">No.</th>
+                <th style="width: 120px;">Tanggal</th>
+                <th>Uraian</th>
+                <th style="width: 150px; text-align: right;">Penerimaan (Rp)</th>
+                <th style="width: 150px; text-align: right;">Pengeluaran (Rp)</th>
+                <th style="width: 150px; text-align: right;">Saldo (Rp)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${allTransactions.length > 0 ? allTransactions.map((item, index) => `
+                <tr>
+                  <td style="text-align: center;">${index + 1}</td>
+                  <td>${formatDate(item.tanggal)}</td>
+                  <td>${item.uraian}</td>
+                  <td style="text-align: right; color: #2e7d32;">${item.penerimaan > 0 ? formatCurrency(item.penerimaan) : '-'}</td>
+                  <td style="text-align: right; color: #d32f2f;">${item.pengeluaran > 0 ? formatCurrency(item.pengeluaran) : '-'}</td>
+                  <td style="text-align: right; font-weight: 600; color: ${item.saldo >= 0 ? '#2e7d32' : '#d32f2f'};">${formatCurrency(item.saldo)}</td>
+                </tr>
+              `).join('') : `
+                <tr>
+                  <td colspan="6" style="text-align: center; padding: 40px; color: #999;">
+                    <i data-feather="inbox" style="width: 48px; height: 48px; margin-bottom: 10px;"></i>
+                    <p>Tidak ada transaksi pada periode ini</p>
+                  </td>
+                </tr>
+              `}
+              
+              ${allTransactions.length > 0 ? `
+                <tr style="background: #f5f5f5; font-weight: bold; font-size: 15px;">
+                  <td colspan="3" style="text-align: right; padding-right: 20px;"><strong>TOTAL</strong></td>
+                  <td style="text-align: right; color: #2e7d32;"><strong>${formatCurrency(totalPenerimaan)}</strong></td>
+                  <td style="text-align: right; color: #d32f2f;"><strong>${formatCurrency(totalPengeluaran)}</strong></td>
+                  <td style="text-align: right; color: ${saldoAkhir >= 0 ? '#2e7d32' : '#d32f2f'};"><strong>${formatCurrency(saldoAkhir)}</strong></td>
+                </tr>
+              ` : ''}
+            </tbody>
+          </table>
+        </div>
+        
+        ${allTransactions.length > 0 ? `
+          <div style="margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #E8F5E9, #F1F8E9); border-radius: 12px; border-left: 4px solid #2E7D32;">
+            <h4 style="color: #2E7D32; margin-bottom: 15px;">📊 Ringkasan Buku Kas</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+              <div>
+                <p style="color: #666; font-size: 14px; margin-bottom: 5px;">Total Penerimaan</p>
+                <p style="font-size: 20px; font-weight: bold; color: #2e7d32;">${formatCurrency(totalPenerimaan)}</p>
+              </div>
+              <div>
+                <p style="color: #666; font-size: 14px; margin-bottom: 5px;">Total Pengeluaran</p>
+                <p style="font-size: 20px; font-weight: bold; color: #d32f2f;">${formatCurrency(totalPengeluaran)}</p>
+              </div>
+              <div>
+                <p style="color: #666; font-size: 14px; margin-bottom: 5px;">Saldo Akhir</p>
+                <p style="font-size: 20px; font-weight: bold; color: ${saldoAkhir >= 0 ? '#2e7d32' : '#d32f2f'};">${formatCurrency(saldoAkhir)}</p>
+              </div>
+              <div>
+                <p style="color: #666; font-size: 14px; margin-bottom: 5px;">Jumlah Transaksi</p>
+                <p style="font-size: 20px; font-weight: bold; color: #1976D2;">${allTransactions.length}</p>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+      `;
     }
     
     feather.replace();
@@ -3809,6 +4009,342 @@ window.tampilkanLaporan = async function() {
     laporanContent.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
   }
 };
+
+// Cetak Laporan
+window.cetakLaporan = async function() {
+  const jenis = document.getElementById('jenisLaporan')?.value;
+  const periode = document.getElementById('periodeLaporan')?.value;
+  const tahun = document.getElementById('tahunLaporan')?.value;
+  const bulan = document.getElementById('bulanLaporan')?.value;
+  const tanggal = document.getElementById('tanggalLaporan')?.value;
+  
+  if (!jenis) {
+    alert('Silakan pilih jenis laporan terlebih dahulu');
+    return;
+  }
+  
+  if (jenis === 'neraca') {
+    window.cetakLaporanNeraca(periode, tahun, bulan, tanggal);
+  } else if (jenis === 'aruskas') {
+    window.cetakLaporanArusKas(periode, tahun, bulan, tanggal);
+  } else if (jenis === 'bukukas') {
+    // Cetak Buku Kas
+    await cetakBukuKasFromLaporan(periode, tahun, bulan, tanggal);
+  } else {
+    alert('Cetak untuk jenis laporan ini belum tersedia');
+  }
+};
+
+// Export Excel
+window.exportExcel = async function() {
+  const jenis = document.getElementById('jenisLaporan')?.value;
+  const periode = document.getElementById('periodeLaporan')?.value;
+  const tahun = document.getElementById('tahunLaporan')?.value;
+  const bulan = document.getElementById('bulanLaporan')?.value;
+  const tanggal = document.getElementById('tanggalLaporan')?.value;
+  
+  if (!jenis) {
+    alert('Silakan pilih jenis laporan terlebih dahulu');
+    return;
+  }
+  
+  if (jenis === 'bukukas') {
+    // Export Buku Kas
+    await exportBukuKasFromLaporan(periode, tahun, bulan, tanggal);
+  } else {
+    alert('Export Excel untuk jenis laporan ini belum tersedia');
+  }
+};
+
+// Helper function untuk cetak Buku Kas dari halaman laporan
+async function cetakBukuKasFromLaporan(periode, tahun, bulan, tanggal) {
+  try {
+    const info = await API.get('/api/koperasi-info');
+    
+    // Get all transactions
+    const [simpanan, penjualan, pengeluaran, pendapatanLain] = await Promise.all([
+      API.get('/api/simpanan/all'),
+      API.get('/api/transaksi/penjualan'),
+      API.get('/api/transaksi/pengeluaran'),
+      API.get('/api/transaksi/pendapatan-lain')
+    ]);
+    
+    // Build transactions array
+    const allTransactions = [];
+    
+    simpanan.forEach(item => {
+      allTransactions.push({
+        tanggal: item.tanggal_transaksi,
+        uraian: `Simpanan ${item.jenis_simpanan} - ${item.nama_lengkap} (${item.nomor_anggota})`,
+        penerimaan: parseFloat(item.jumlah || 0),
+        pengeluaran: 0
+      });
+    });
+    
+    penjualan.forEach(item => {
+      allTransactions.push({
+        tanggal: item.tanggal_transaksi,
+        uraian: `Penjualan - ${item.keterangan || 'Hasil Penjualan'} (${item.nama_usaha || '-'})`,
+        penerimaan: parseFloat(item.jumlah_penjualan || 0),
+        pengeluaran: 0
+      });
+    });
+    
+    pendapatanLain.forEach(item => {
+      allTransactions.push({
+        tanggal: item.tanggal_transaksi,
+        uraian: `Pendapatan Lain - ${item.keterangan || '-'}`,
+        penerimaan: parseFloat(item.jumlah || 0),
+        pengeluaran: 0
+      });
+    });
+    
+    pengeluaran.forEach(item => {
+      allTransactions.push({
+        tanggal: item.tanggal_transaksi,
+        uraian: `${item.kategori || 'Pengeluaran'} - ${item.keterangan || '-'}`,
+        penerimaan: 0,
+        pengeluaran: parseFloat(item.jumlah || 0)
+      });
+    });
+    
+    // Filter by periode
+    let filteredTransactions = allTransactions;
+    if (periode === 'harian' && tanggal) {
+      filteredTransactions = allTransactions.filter(t => t.tanggal === tanggal);
+    } else if (periode === 'bulanan' && bulan) {
+      filteredTransactions = allTransactions.filter(t => t.tanggal && t.tanggal.startsWith(`${tahun}-${bulan}`));
+    } else if (periode === 'tahunan') {
+      filteredTransactions = allTransactions.filter(t => t.tanggal && t.tanggal.startsWith(tahun));
+    }
+    
+    // Sort by date
+    filteredTransactions.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+    
+    // Calculate running balance
+    let saldo = 0;
+    const rows = filteredTransactions.map((item, index) => {
+      saldo += item.penerimaan - item.pengeluaran;
+      return `
+        <tr>
+          <td style="text-align: center;">${index + 1}</td>
+          <td>${formatDate(item.tanggal)}</td>
+          <td>${item.uraian}</td>
+          <td style="text-align: right;">${item.penerimaan > 0 ? formatCurrency(item.penerimaan) : '-'}</td>
+          <td style="text-align: right;">${item.pengeluaran > 0 ? formatCurrency(item.pengeluaran) : '-'}</td>
+          <td style="text-align: right; font-weight: bold;">${formatCurrency(saldo)}</td>
+        </tr>
+      `;
+    }).join('');
+    
+    const totalPenerimaan = filteredTransactions.reduce((sum, t) => sum + t.penerimaan, 0);
+    const totalPengeluaran = filteredTransactions.reduce((sum, t) => sum + t.pengeluaran, 0);
+    
+    // Format periode
+    let periodeText = '';
+    if (periode === 'harian' && tanggal) {
+      const date = new Date(tanggal);
+      const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      periodeText = `${date.getDate()} ${namaBulan[date.getMonth()]} ${date.getFullYear()}`;
+    } else if (periode === 'bulanan' && bulan) {
+      const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      periodeText = `${namaBulan[parseInt(bulan) - 1]} ${tahun}`;
+    } else {
+      periodeText = `Tahun ${tahun}`;
+    }
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Buku Kas - ${info.nama_koperasi || 'Koperasi'}</title>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+          .header h2 { margin: 5px 0; }
+          .header p { margin: 3px 0; font-size: 14px; }
+          .periode { text-align: center; margin: 15px 0; font-weight: bold; font-size: 14px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 11px; }
+          th, td { border: 1px solid #333; padding: 6px; }
+          th { background-color: #2E7D32; color: white; text-align: center; }
+          tr:nth-child(even) { background-color: #f9f9f9; }
+          tfoot tr { background-color: #f0f0f0; font-weight: bold; }
+          .summary { margin-top: 20px; padding: 15px; background: #f8f9fa; border: 1px solid #ddd; }
+          .summary-row { display: flex; justify-content: space-between; margin: 8px 0; }
+          .footer { margin-top: 30px; font-size: 12px; text-align: right; }
+          @media print {
+            button { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h2>${info.nama_koperasi || 'Koperasi'}</h2>
+          <p>${info.alamat || ''}</p>
+          <p>Telp: ${info.nomor_telpon || '-'} | Email: ${info.email || '-'}</p>
+          <h3 style="margin-top: 15px;">BUKU KAS</h3>
+        </div>
+        
+        <div class="periode">Periode: ${periodeText}</div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 40px;">No.</th>
+              <th style="width: 90px;">Tanggal</th>
+              <th>Uraian</th>
+              <th style="width: 120px;">Penerimaan (Rp)</th>
+              <th style="width: 120px;">Pengeluaran (Rp)</th>
+              <th style="width: 120px;">Saldo (Rp)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3" style="text-align: right;"><strong>TOTAL</strong></td>
+              <td style="text-align: right;"><strong>${formatCurrency(totalPenerimaan)}</strong></td>
+              <td style="text-align: right;"><strong>${formatCurrency(totalPengeluaran)}</strong></td>
+              <td style="text-align: right;"><strong>${formatCurrency(saldo)}</strong></td>
+            </tr>
+          </tfoot>
+        </table>
+        
+        <div class="summary">
+          <h4 style="margin: 0 0 10px 0;">Ringkasan</h4>
+          <div class="summary-row">
+            <span>Total Penerimaan:</span>
+            <strong>${formatCurrency(totalPenerimaan)}</strong>
+          </div>
+          <div class="summary-row">
+            <span>Total Pengeluaran:</span>
+            <strong>${formatCurrency(totalPengeluaran)}</strong>
+          </div>
+          <div class="summary-row" style="border-top: 2px solid #333; padding-top: 8px; margin-top: 8px;">
+            <span>Saldo Akhir:</span>
+            <strong style="color: ${saldo >= 0 ? '#2E7D32' : '#d32f2f'};">${formatCurrency(saldo)}</strong>
+          </div>
+        </div>
+        
+        <div class="footer">
+          <p>Dicetak pada: ${new Date().toLocaleString('id-ID')}</p>
+        </div>
+        
+        <div style="margin-top: 20px; text-align: center;">
+          <button onclick="window.print()" style="padding: 10px 20px; background: #2E7D32; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            Cetak Dokumen
+          </button>
+          <button onclick="window.close()" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px;">
+            Tutup
+          </button>
+        </div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  } catch (error) {
+    alert('Error: ' + error.message);
+  }
+}
+
+// Helper function untuk export Buku Kas dari halaman laporan
+async function exportBukuKasFromLaporan(periode, tahun, bulan, tanggal) {
+  try {
+    // Get all transactions
+    const [simpanan, penjualan, pengeluaran, pendapatanLain] = await Promise.all([
+      API.get('/api/simpanan/all'),
+      API.get('/api/transaksi/penjualan'),
+      API.get('/api/transaksi/pengeluaran'),
+      API.get('/api/transaksi/pendapatan-lain')
+    ]);
+    
+    // Build transactions array
+    const allTransactions = [];
+    
+    simpanan.forEach(item => {
+      allTransactions.push({
+        tanggal: item.tanggal_transaksi,
+        uraian: `Simpanan ${item.jenis_simpanan} - ${item.nama_lengkap} (${item.nomor_anggota})`,
+        penerimaan: parseFloat(item.jumlah || 0),
+        pengeluaran: 0
+      });
+    });
+    
+    penjualan.forEach(item => {
+      allTransactions.push({
+        tanggal: item.tanggal_transaksi,
+        uraian: `Penjualan - ${item.keterangan || 'Hasil Penjualan'} (${item.nama_usaha || '-'})`,
+        penerimaan: parseFloat(item.jumlah_penjualan || 0),
+        pengeluaran: 0
+      });
+    });
+    
+    pendapatanLain.forEach(item => {
+      allTransactions.push({
+        tanggal: item.tanggal_transaksi,
+        uraian: `Pendapatan Lain - ${item.keterangan || '-'}`,
+        penerimaan: parseFloat(item.jumlah || 0),
+        pengeluaran: 0
+      });
+    });
+    
+    pengeluaran.forEach(item => {
+      allTransactions.push({
+        tanggal: item.tanggal_transaksi,
+        uraian: `${item.kategori || 'Pengeluaran'} - ${item.keterangan || '-'}`,
+        penerimaan: 0,
+        pengeluaran: parseFloat(item.jumlah || 0)
+      });
+    });
+    
+    // Filter by periode
+    let filteredTransactions = allTransactions;
+    if (periode === 'harian' && tanggal) {
+      filteredTransactions = allTransactions.filter(t => t.tanggal === tanggal);
+    } else if (periode === 'bulanan' && bulan) {
+      filteredTransactions = allTransactions.filter(t => t.tanggal && t.tanggal.startsWith(`${tahun}-${bulan}`));
+    } else if (periode === 'tahunan') {
+      filteredTransactions = allTransactions.filter(t => t.tanggal && t.tanggal.startsWith(tahun));
+    }
+    
+    // Sort by date
+    filteredTransactions.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+    
+    // Build CSV
+    let saldo = 0;
+    let totalPenerimaan = 0;
+    let totalPengeluaran = 0;
+    
+    let csv = 'No.,Tanggal,Uraian,Penerimaan (Rp),Pengeluaran (Rp),Saldo (Rp)\n';
+    
+    filteredTransactions.forEach((item, index) => {
+      saldo += item.penerimaan - item.pengeluaran;
+      totalPenerimaan += item.penerimaan;
+      totalPengeluaran += item.pengeluaran;
+      
+      const uraian = (item.uraian || '').replace(/"/g, '""');
+      csv += `${index + 1},"${formatDate(item.tanggal)}","${uraian}",${item.penerimaan},${item.pengeluaran},${saldo}\n`;
+    });
+    
+    csv += `\nTOTAL,,,${totalPenerimaan},${totalPengeluaran},${saldo}\n`;
+    
+    // Download
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `buku-kas-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    alert('Data Buku Kas berhasil diexport!');
+  } catch (error) {
+    alert('Error: ' + error.message);
+  }
+}
 
 // Pengaturan
 window.renderPengaturan = async function() {
