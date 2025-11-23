@@ -199,6 +199,9 @@ async function loadPage(page) {
       case 'simpanan':
         await renderSimpanan();
         break;
+      case 'bayar-simpanan':
+        await renderBayarSimpanan();
+        break;
       case 'transaksi':
         await renderTransaksi();
         break;
@@ -1241,23 +1244,20 @@ async function renderSimpanan() {
   const content = document.getElementById('memberContent');
   
   try {
-    // Get all simpanan data
-    const simpananPokok = await API.get('/api/simpanan/pokok');
-    const simpananWajib = await API.get('/api/simpanan/wajib');
-    const simpananKhusus = await API.get('/api/simpanan/khusus');
-    const simpananSukarela = await API.get('/api/simpanan/sukarela');
+    // Get member's simpanan history (including pending and rejected)
+    const myHistory = await API.get('/api/simpanan/member/history');
     
-    // Filter for this member
-    const myPokok = simpananPokok.filter(s => s.anggota_id === memberData.id);
-    const myWajib = simpananWajib.filter(s => s.anggota_id === memberData.id);
-    const myKhusus = simpananKhusus.filter(s => s.anggota_id === memberData.id);
-    const mySukarela = simpananSukarela.filter(s => s.anggota_id === memberData.id);
+    // Group by jenis_simpanan
+    const myPokok = myHistory.filter(s => s.jenis_simpanan === 'pokok');
+    const myWajib = myHistory.filter(s => s.jenis_simpanan === 'wajib');
+    const myKhusus = myHistory.filter(s => s.jenis_simpanan === 'khusus');
+    const mySukarela = myHistory.filter(s => s.jenis_simpanan === 'sukarela');
     
-    // Calculate totals
-    const totalPokok = myPokok.reduce((sum, s) => sum + s.jumlah, 0);
-    const totalWajib = myWajib.reduce((sum, s) => sum + s.jumlah, 0);
-    const totalKhusus = myKhusus.reduce((sum, s) => sum + s.jumlah, 0);
-    const totalSukarela = mySukarela.reduce((sum, s) => sum + s.jumlah, 0);
+    // Calculate totals (only approved)
+    const totalPokok = myPokok.filter(s => s.status === 'approved' || !s.status).reduce((sum, s) => sum + s.jumlah, 0);
+    const totalWajib = myWajib.filter(s => s.status === 'approved' || !s.status).reduce((sum, s) => sum + s.jumlah, 0);
+    const totalKhusus = myKhusus.filter(s => s.status === 'approved' || !s.status).reduce((sum, s) => sum + s.jumlah, 0);
+    const totalSukarela = mySukarela.filter(s => s.status === 'approved' || !s.status).reduce((sum, s) => sum + s.jumlah, 0);
     
     content.innerHTML = `
       <h2 style="font-size: 28px; color: var(--member-text); margin-bottom: 24px;">
@@ -1347,7 +1347,7 @@ async function renderSimpanan() {
 function renderSimpananTable(title, data) {
   if (data.length === 0) return '';
   
-  const total = data.reduce((sum, s) => sum + s.jumlah, 0);
+  const totalApproved = data.filter(s => s.status === 'approved' || !s.status).reduce((sum, s) => sum + s.jumlah, 0);
   
   return `
     <div class="simpanan-table" style="margin-bottom: 24px;">
@@ -1357,22 +1357,36 @@ function renderSimpananTable(title, data) {
           <tr>
             <th>Tanggal</th>
             <th>Jumlah</th>
-            <th>Metode Pembayaran</th>
+            <th>Metode</th>
+            <th>Status</th>
             <th>Keterangan</th>
           </tr>
         </thead>
         <tbody>
-          ${data.map(s => `
-            <tr>
-              <td>${formatDate(s.tanggal_transaksi)}</td>
-              <td><strong>${formatCurrency(s.jumlah)}</strong></td>
-              <td>${s.metode_pembayaran || '-'}</td>
-              <td>${s.keterangan || '-'}</td>
-            </tr>
-          `).join('')}
+          ${data.map(s => {
+            const statusBadge = s.status === 'pending' 
+              ? '<span class="badge badge-warning">Pending</span>'
+              : s.status === 'rejected'
+              ? '<span class="badge badge-danger">Ditolak</span>'
+              : '<span class="badge badge-success">Disetujui</span>';
+            
+            const keterangan = s.status === 'rejected' && s.rejection_reason
+              ? `<div>${s.keterangan || '-'}</div><div style="color: #d32f2f; font-size: 12px; margin-top: 4px;"><strong>Alasan Ditolak:</strong> ${s.rejection_reason}</div>`
+              : (s.keterangan || '-');
+            
+            return `
+              <tr style="${s.status === 'rejected' ? 'background: #ffebee;' : ''}">
+                <td>${formatDate(s.tanggal_transaksi)}</td>
+                <td><strong>${formatCurrency(s.jumlah)}</strong></td>
+                <td>${s.metode_pembayaran || '-'}</td>
+                <td>${statusBadge}</td>
+                <td>${keterangan}</td>
+              </tr>
+            `;
+          }).join('')}
           <tr style="background: var(--member-bg); font-weight: 700;">
-            <td>TOTAL</td>
-            <td colspan="3"><strong>${formatCurrency(total)}</strong></td>
+            <td colspan="2">TOTAL DISETUJUI</td>
+            <td colspan="3"><strong>${formatCurrency(totalApproved)}</strong></td>
           </tr>
         </tbody>
       </table>
@@ -1808,3 +1822,306 @@ function stopBannerAutoSlide() {
 setTimeout(() => {
   startBannerAutoSlide();
 }, 1000);
+
+
+// ===== BAYAR SIMPANAN PAGE =====
+
+window.renderBayarSimpanan = async function() {
+  const contentArea = document.getElementById('memberContent');
+  
+  contentArea.innerHTML = `
+    <div class="member-card">
+      <div class="member-card-header">
+        <h2 class="member-card-title">
+          <i data-feather="credit-card"></i>
+          Bayar Simpanan
+        </h2>
+        <p style="color: #666; font-size: 14px; margin-top: 8px;">
+          Lakukan pembayaran simpanan dengan mudah dan aman
+        </p>
+      </div>
+      
+      <div class="member-card-body">
+        <!-- Info Box -->
+        <div style="background: linear-gradient(135deg, #E3F2FD, #BBDEFB); padding: 20px; border-radius: 12px; margin-bottom: 25px; border-left: 4px solid #2196F3;">
+          <div style="display: flex; align-items: start; gap: 15px;">
+            <i data-feather="info" style="color: #2196F3; width: 24px; height: 24px; flex-shrink: 0; margin-top: 2px;"></i>
+            <div>
+              <h4 style="margin: 0 0 10px 0; color: #1976D2; font-size: 16px;">Informasi Penting</h4>
+              <ul style="margin: 0; padding-left: 20px; color: #555; line-height: 1.8;">
+                <li>Pembayaran simpanan akan diverifikasi oleh admin dalam 1x24 jam</li>
+                <li>Pastikan bukti pembayaran yang diupload jelas dan valid</li>
+                <li>Anda akan menerima notifikasi setelah pembayaran disetujui</li>
+                <li>Untuk pertanyaan, hubungi admin koperasi</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Form Bayar Simpanan -->
+        <form id="bayarSimpananForm" style="max-width: 700px;">
+          <div class="form-group">
+            <label>Jenis Simpanan *</label>
+            <select name="jenis_simpanan" id="jenisSimpananMember" required style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
+              <option value="">Pilih Jenis Simpanan</option>
+              <option value="pokok">Simpanan Pokok</option>
+              <option value="wajib">Simpanan Wajib</option>
+              <option value="khusus">Simpanan Khusus</option>
+              <option value="sukarela">Simpanan Sukarela</option>
+            </select>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Jumlah Pembayaran *</label>
+              <input type="number" 
+                     name="jumlah" 
+                     required 
+                     min="1000" 
+                     step="1000"
+                     placeholder="Contoh: 100000"
+                     style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
+              <small style="color: #666; font-size: 12px;">Minimal Rp 1.000</small>
+            </div>
+            <div class="form-group">
+              <label>Tanggal Pembayaran *</label>
+              <input type="date" 
+                     name="tanggal_transaksi" 
+                     value="${new Date().toISOString().split('T')[0]}" 
+                     required
+                     style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label>Metode Pembayaran *</label>
+            <select name="metode_pembayaran" required style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
+              <option value="Transfer">Transfer Bank</option>
+              <option value="E-Wallet">E-Wallet (GoPay, OVO, Dana, dll)</option>
+              <option value="Tunai">Tunai (Setor ke Kantor)</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>Keterangan</label>
+            <textarea name="keterangan" 
+                      rows="3" 
+                      placeholder="Tambahkan catatan jika diperlukan..."
+                      style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px; resize: vertical;"></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label>Bukti Pembayaran * <span style="color: #d32f2f;">(Wajib)</span></label>
+            
+            <!-- Tombol pilihan upload -->
+            <div class="upload-buttons-container">
+              <button type="button" 
+                      onclick="triggerFileUpload()" 
+                      class="btn btn-secondary">
+                <i data-feather="upload"></i>
+                <span>Pilih File</span>
+              </button>
+              <button type="button" 
+                      onclick="triggerCameraCapture()" 
+                      class="btn btn-primary">
+                <i data-feather="camera"></i>
+                <span>Ambil Foto</span>
+              </button>
+            </div>
+            
+            <!-- Input file (hidden) -->
+            <input type="file" 
+                   name="bukti_pembayaran" 
+                   id="buktiBayarMember"
+                   accept="image/*,.pdf" 
+                   required
+                   onchange="previewBuktiBayarMember(this)"
+                   style="display: none;">
+            
+            <!-- Input camera (hidden) -->
+            <input type="file" 
+                   id="buktiBayarCamera"
+                   accept="image/*" 
+                   capture="environment"
+                   onchange="handleCameraCapture(this)"
+                   style="display: none;">
+            
+            <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
+              Format: JPG, PNG, PDF. Maksimal 5MB. Upload foto/scan bukti transfer atau struk pembayaran.
+            </small>
+            <div id="previewBuktiBayarMember" style="margin-top: 15px;"></div>
+          </div>
+          
+          <div style="background: #FFF3E0; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #FF9800;">
+            <div style="display: flex; align-items: start; gap: 12px;">
+              <i data-feather="alert-circle" style="color: #F57C00; width: 20px; height: 20px; flex-shrink: 0; margin-top: 2px;"></i>
+              <p style="margin: 0; color: #E65100; font-size: 13px; line-height: 1.6;">
+                <strong>Perhatian:</strong> Pastikan bukti pembayaran yang diupload jelas dan sesuai dengan jumlah yang diinput. 
+                Pembayaran yang tidak sesuai akan ditolak oleh admin.
+              </p>
+            </div>
+          </div>
+          
+          <div class="btn-group" style="margin-top: 25px;">
+            <button type="submit" class="btn btn-primary" style="padding: 14px 32px; font-size: 15px;">
+              <i data-feather="send"></i>
+              <span>Kirim Pembayaran</span>
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="renderSimpanan()" style="padding: 14px 32px; font-size: 15px;">
+              <i data-feather="x"></i>
+              <span>Batal</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  
+  feather.replace();
+  
+  // Handle form submit
+  document.getElementById('bayarSimpananForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const buktiBayar = formData.get('bukti_pembayaran');
+    
+    if (!buktiBayar || buktiBayar.size === 0) {
+      alert('Bukti pembayaran wajib diupload!');
+      return;
+    }
+    
+    // Validate file size (5MB)
+    if (buktiBayar.size > 5 * 1024 * 1024) {
+      alert('Ukuran file terlalu besar! Maksimal 5MB');
+      return;
+    }
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i data-feather="loader"></i> Mengirim...';
+    feather.replace();
+    
+    try {
+      const response = await fetch('/api/simpanan/member/bayar', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        alert('✅ ' + result.message + '\n\nPembayaran Anda akan diverifikasi oleh admin dalam 1x24 jam. Terima kasih!');
+        renderSimpanan(); // Redirect to simpanan page
+      } else {
+        alert('❌ Error: ' + result.error);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+        feather.replace();
+      }
+    } catch (error) {
+      alert('❌ Terjadi kesalahan: ' + error.message);
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+      feather.replace();
+    }
+  });
+};
+
+// Preview bukti bayar member
+window.previewBuktiBayarMember = function(input) {
+  const file = input.files[0];
+  const preview = document.getElementById('previewBuktiBayarMember');
+  
+  if (!preview) return;
+  
+  if (file) {
+    // Validate size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File terlalu besar! Maksimal 5MB');
+      input.value = '';
+      preview.innerHTML = '';
+      return;
+    }
+    
+    // Validate type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Format file tidak didukung! Gunakan JPG, PNG, GIF, atau PDF');
+      input.value = '';
+      preview.innerHTML = '';
+      return;
+    }
+    
+    // Show preview
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        preview.innerHTML = `
+          <div style="text-align: center; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+            <img src="${e.target.result}" 
+                 style="max-width: 300px; max-height: 200px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">
+              ✓ ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+            </p>
+          </div>
+        `;
+      };
+      reader.readAsDataURL(file);
+    } else if (file.type === 'application/pdf') {
+      preview.innerHTML = `
+        <div style="padding: 15px; background: #f5f5f5; border-radius: 8px; text-align: center;">
+          <i data-feather="file-text" style="width: 48px; height: 48px; color: #d32f2f;"></i>
+          <p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">
+            ✓ ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+          </p>
+        </div>
+      `;
+      feather.replace();
+    }
+  } else {
+    preview.innerHTML = '';
+  }
+};
+
+// Trigger file upload
+window.triggerFileUpload = function() {
+  document.getElementById('buktiBayarMember').click();
+};
+
+// Trigger camera capture
+window.triggerCameraCapture = function() {
+  document.getElementById('buktiBayarCamera').click();
+};
+
+// Handle camera capture
+window.handleCameraCapture = function(input) {
+  const file = input.files[0];
+  
+  if (!file) return;
+  
+  // Validate size (5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    alert('File terlalu besar! Maksimal 5MB');
+    input.value = '';
+    return;
+  }
+  
+  // Transfer file to main input
+  const mainInput = document.getElementById('buktiBayarMember');
+  const dataTransfer = new DataTransfer();
+  dataTransfer.items.add(file);
+  mainInput.files = dataTransfer.files;
+  
+  // Trigger preview
+  previewBuktiBayarMember(mainInput);
+  
+  // Clear camera input
+  input.value = '';
+};
+
+console.log('=== BAYAR SIMPANAN MEMBER LOADED ===');

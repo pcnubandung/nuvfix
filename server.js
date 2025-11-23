@@ -53,6 +53,32 @@ const upload = multer({
   }
 });
 
+// Multer configuration for bukti files (images and PDFs)
+const buktiStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, UPLOAD_PATH);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'bukti-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const buktiUpload = multer({
+  storage: buktiStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPG, PNG, GIF, and PDF are allowed.'));
+    }
+  }
+});
+
 // Authentication middleware - supports both admin and member tokens
 const authenticateToken = (req, res, next) => {
   const token = req.headers['authorization']?.split(' ')[1] || req.session.token;
@@ -78,11 +104,32 @@ const authenticateToken = (req, res, next) => {
       next();
     });
   });
-};
+
+// Activity Log Middleware
+const logActivity = (action, module, description = '') => {
+  return (req, res, next) => {
+    if (req.user) {
+      const ip = req.ip || req.connection.remoteAddress;
+      const userAgent = req.get('user-agent') || '';
+      
+      db.run(
+        `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [req.user.id, req.user.username, action, module, description, ip, userAgent],
+        (err) => {
+          if (err) console.error('Error logging activity:', err);
+        }
+      );
+    }
+    next();
+  };
+};};
 
 // ===== AUTH ROUTES =====
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
+  const ip = req.ip || req.connection.remoteAddress;
+  const userAgent = req.get('user-agent') || '';
 
   db.get('SELECT * FROM users WHERE username = ? AND status = "aktif"', [username], (err, user) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -93,6 +140,17 @@ app.post('/api/login', (req, res) => {
         const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, SECRET_KEY, { expiresIn: '24h' });
         req.session.token = token;
         req.session.user = { id: user.id, username: user.username, role: user.role, nama_lengkap: user.nama_lengkap, foto: user.foto };
+        
+        // Log activity
+        db.run(
+          `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [user.id, user.username, 'LOGIN', 'Auth', `${user.nama_lengkap} login ke sistem`, ip, userAgent],
+          (err) => {
+            if (err) console.error('Error logging activity:', err);
+          }
+        );
+        
         res.json({ token, user: { id: user.id, username: user.username, role: user.role, nama_lengkap: user.nama_lengkap, hak_akses: user.hak_akses, foto: user.foto } });
       } else {
         res.status(401).json({ error: 'Username atau password salah' });
@@ -101,7 +159,22 @@ app.post('/api/login', (req, res) => {
   });
 });
 
-app.post('/api/logout', (req, res) => {
+app.post('/api/logout', authenticateToken, (req, res) => {
+  const ip = req.ip || req.connection.remoteAddress;
+  const userAgent = req.get('user-agent') || '';
+  
+  // Log activity before logout
+  if (req.user) {
+    db.run(
+      `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [req.user.id, req.user.username, 'LOGOUT', 'Auth', `${req.user.username} logout dari sistem`, ip, userAgent],
+      (err) => {
+        if (err) console.error('Error logging activity:', err);
+      }
+    );
+  }
+  
   req.session.destroy();
   res.json({ message: 'Logout berhasil' });
 });
@@ -505,51 +578,74 @@ app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
   db.get('SELECT COUNT(*) as total FROM anggota WHERE status = "aktif"', [], (err, row) => {
     stats.totalAnggota = row ? row.total : 0;
     
-    // Total Simpanan (termasuk sukarela dengan setoran - penarikan)
+    // Total Simpanan (hanya yang approved, termasuk sukarela dengan setoran - penarikan)
+    // Try with status filter first
     db.get(`SELECT 
-            (SELECT COALESCE(SUM(CAST(jumlah AS REAL)), 0) FROM simpanan_pokok) +
-            (SELECT COALESCE(SUM(CAST(jumlah AS REAL)), 0) FROM simpanan_wajib) +
-            (SELECT COALESCE(SUM(CAST(jumlah AS REAL)), 0) FROM simpanan_khusus) +
-            (SELECT COALESCE(SUM(CASE WHEN jenis = 'Setoran' THEN CAST(jumlah AS REAL) ELSE -CAST(jumlah AS REAL) END), 0) FROM simpanan_sukarela) as total`, [], (err, row) => {
-      if (err) console.error('Error calculating total simpanan:', err);
-      stats.totalSimpanan = row ? parseFloat(row.total) || 0 : 0;
+            (SELECT COALESCE(SUM(CAST(jumlah AS REAL)), 0) FROM simpanan_pokok WHERE status = 'approved' OR status IS NULL) +
+            (SELECT COALESCE(SUM(CAST(jumlah AS REAL)), 0) FROM simpanan_wajib WHERE status = 'approved' OR status IS NULL) +
+            (SELECT COALESCE(SUM(CAST(jumlah AS REAL)), 0) FROM simpanan_khusus WHERE status = 'approved' OR status IS NULL) +
+            (SELECT COALESCE(SUM(CASE WHEN jenis = 'Setoran' THEN CAST(jumlah AS REAL) ELSE -CAST(jumlah AS REAL) END), 0) FROM simpanan_sukarela WHERE status = 'approved' OR status IS NULL) as total`, [], (err, row) => {
+      if (err && err.message && err.message.includes('no such column')) {
+        // Status column doesn't exist, calculate without filter
+        console.log('Status column not found in simpanan tables, calculating total without filter');
+        db.get(`SELECT 
+                (SELECT COALESCE(SUM(CAST(jumlah AS REAL)), 0) FROM simpanan_pokok) +
+                (SELECT COALESCE(SUM(CAST(jumlah AS REAL)), 0) FROM simpanan_wajib) +
+                (SELECT COALESCE(SUM(CAST(jumlah AS REAL)), 0) FROM simpanan_khusus) +
+                (SELECT COALESCE(SUM(CASE WHEN jenis = 'Setoran' THEN CAST(jumlah AS REAL) ELSE -CAST(jumlah AS REAL) END), 0) FROM simpanan_sukarela) as total`, [], (err2, row2) => {
+          if (err2) console.error('Error calculating total simpanan (no status):', err2);
+          stats.totalSimpanan = row2 ? parseFloat(row2.total) || 0 : 0;
+          console.log('Total simpanan calculated (no status filter):', stats.totalSimpanan);
+          continueStats();
+        });
+      } else if (err) {
+        console.error('Error calculating total simpanan:', err);
+        stats.totalSimpanan = 0;
+        continueStats();
+      } else {
+        stats.totalSimpanan = row ? parseFloat(row.total) || 0 : 0;
+        console.log('Total simpanan calculated (with status filter):', stats.totalSimpanan);
+        continueStats();
+      }
+    });
+  });
+  
+  function continueStats() {
+    // Total Penjualan
+    db.get('SELECT COALESCE(SUM(jumlah_penjualan), 0) as total FROM transaksi_penjualan', [], (err, row) => {
+      stats.totalPenjualan = row ? row.total : 0;
       
-      // Total Penjualan
-      db.get('SELECT COALESCE(SUM(jumlah_penjualan), 0) as total FROM transaksi_penjualan', [], (err, row) => {
-        stats.totalPenjualan = row ? row.total : 0;
+      // Total HPP
+      db.get('SELECT COALESCE(SUM(hpp), 0) as total FROM transaksi_penjualan', [], (err, row) => {
+        stats.totalHPP = row ? row.total : 0;
         
-        // Total HPP
-        db.get('SELECT COALESCE(SUM(hpp), 0) as total FROM transaksi_penjualan', [], (err, row) => {
-          stats.totalHPP = row ? row.total : 0;
+        // Total Pengeluaran (exclude Pembelian Barang dan Pembelian Aset & Inventaris)
+        // Pembelian Barang masuk ke Persediaan di Neraca
+        // Pembelian Aset masuk ke Aset Tetap di Neraca
+        db.get(`SELECT COALESCE(SUM(jumlah), 0) as total 
+                FROM pengeluaran 
+                WHERE kategori NOT IN ('Pembelian Barang', 'Pembelian Aset & Inventaris')`, [], (err, row) => {
+          stats.totalPengeluaran = row ? row.total : 0;
           
-          // Total Pengeluaran (exclude Pembelian Barang dan Pembelian Aset & Inventaris)
-          // Pembelian Barang masuk ke Persediaan di Neraca
-          // Pembelian Aset masuk ke Aset Tetap di Neraca
-          db.get(`SELECT COALESCE(SUM(jumlah), 0) as total 
-                  FROM pengeluaran 
-                  WHERE kategori NOT IN ('Pembelian Barang', 'Pembelian Aset & Inventaris')`, [], (err, row) => {
-            stats.totalPengeluaran = row ? row.total : 0;
+          // Total Pendapatan Lain
+          db.get('SELECT COALESCE(SUM(jumlah), 0) as total FROM pendapatan_lain', [], (err, row) => {
+            stats.totalPendapatanLain = row ? row.total : 0;
             
-            // Total Pendapatan Lain
-            db.get('SELECT COALESCE(SUM(jumlah), 0) as total FROM pendapatan_lain', [], (err, row) => {
-              stats.totalPendapatanLain = row ? row.total : 0;
-              
-              // Formula yang benar (dengan Pendapatan Lain):
-              // Total Pendapatan = Penjualan + Pendapatan Lain
-              // Laba Kotor = Total Pendapatan - HPP
-              // SHU Tahun Berjalan = Laba Kotor - Biaya Operasional
-              stats.totalPendapatan = stats.totalPenjualan + stats.totalPendapatanLain;
-              stats.labaKotor = stats.totalPendapatan - stats.totalHPP;
-              stats.labaBersih = stats.labaKotor - stats.totalPengeluaran; // SHU Tahun Berjalan
-              stats.labaRugi = stats.labaBersih; // Alias untuk kompatibilitas
-              
-              res.json(stats);
-            });
+            // Formula yang benar (dengan Pendapatan Lain):
+            // Total Pendapatan = Penjualan + Pendapatan Lain
+            // Laba Kotor = Total Pendapatan - HPP
+            // SHU Tahun Berjalan = Laba Kotor - Biaya Operasional
+            stats.totalPendapatan = stats.totalPenjualan + stats.totalPendapatanLain;
+            stats.labaKotor = stats.totalPendapatan - stats.totalHPP;
+            stats.labaBersih = stats.labaKotor - stats.totalPengeluaran; // SHU Tahun Berjalan
+            stats.labaRugi = stats.labaBersih; // Alias untuk kompatibilitas
+            
+            res.json(stats);
           });
         });
       });
     });
-  });
+  }
 });
 
 // ===== TRANSAKSI ROUTES =====
@@ -567,13 +663,42 @@ app.post('/api/transaksi/penjualan', authenticateToken, (req, res) => {
   const { unit_usaha_id, tanggal_transaksi, jumlah_penjualan, hpp, keterangan } = req.body;
   const keuntungan = jumlah_penjualan - (hpp || 0);
   
-  db.run('INSERT INTO transaksi_penjualan (unit_usaha_id, tanggal_transaksi, jumlah_penjualan, hpp, keuntungan, keterangan) VALUES (?, ?, ?, ?, ?, ?)',
-    [unit_usaha_id, tanggal_transaksi, jumlah_penjualan, hpp, keuntungan, keterangan],
-    function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: 'Transaksi penjualan berhasil ditambahkan', id: this.lastID });
-    }
-  );
+  // Get unit usaha name for activity log
+  if (unit_usaha_id) {
+    db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
+      insertPenjualan(unitUsaha ? unitUsaha.nama_usaha : null);
+    });
+  } else {
+    insertPenjualan(null);
+  }
+  
+  function insertPenjualan(unitUsahaName) {
+    db.run('INSERT INTO transaksi_penjualan (unit_usaha_id, tanggal_transaksi, jumlah_penjualan, hpp, keuntungan, keterangan) VALUES (?, ?, ?, ?, ?, ?)',
+      [unit_usaha_id, tanggal_transaksi, jumlah_penjualan, hpp, keuntungan, keterangan],
+      function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        // Log activity
+        const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+        const unitUsahaText = unitUsahaName ? ` dari ${unitUsahaName}` : '';
+        const description = `Menambahkan penjualan${unitUsahaText} sebesar ${formatCurrency(jumlah_penjualan)} (Keuntungan: ${formatCurrency(keuntungan)})`;
+        
+        const ip = req.ip || req.connection.remoteAddress;
+        const userAgent = req.get('user-agent') || '';
+        
+        db.run(
+          `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [req.user.id, req.user.username, 'CREATE', 'Penjualan', description, ip, userAgent],
+          (logErr) => {
+            if (logErr) console.error('Error logging activity:', logErr);
+          }
+        );
+        
+        res.json({ message: 'Transaksi penjualan berhasil ditambahkan', id: this.lastID });
+      }
+    );
+  }
 });
 
 app.get('/api/transaksi/pengeluaran', authenticateToken, (req, res) => {
@@ -586,16 +711,81 @@ app.get('/api/transaksi/pengeluaran', authenticateToken, (req, res) => {
   });
 });
 
-app.post('/api/transaksi/pengeluaran', authenticateToken, (req, res) => {
+app.post('/api/transaksi/pengeluaran', authenticateToken, buktiUpload.single('bukti_pengeluaran'), (req, res) => {
   const { unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan } = req.body;
+  const bukti_pengeluaran = req.file ? req.file.filename : null;
   
-  db.run('INSERT INTO pengeluaran (unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan) VALUES (?, ?, ?, ?, ?)',
-    [unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan],
-    function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: 'Pengeluaran berhasil ditambahkan', id: this.lastID });
-    }
-  );
+  // Get unit usaha name for activity log
+  if (unit_usaha_id) {
+    db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
+      insertPengeluaran(unitUsaha ? unitUsaha.nama_usaha : null);
+    });
+  } else {
+    insertPengeluaran(null);
+  }
+  
+  function insertPengeluaran(unitUsahaName) {
+    // Check if bukti_pengeluaran column exists
+    db.all("PRAGMA table_info(pengeluaran)", [], (err, columns) => {
+      const hasBuktiColumn = columns && columns.some(col => col.name === 'bukti_pengeluaran');
+      
+      if (hasBuktiColumn) {
+        // Insert with bukti_pengeluaran
+        db.run('INSERT INTO pengeluaran (unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan, bukti_pengeluaran) VALUES (?, ?, ?, ?, ?, ?)',
+          [unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan, bukti_pengeluaran],
+          function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            
+            // Log activity
+            const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+            const unitUsahaText = unitUsahaName ? ` untuk ${unitUsahaName}` : '';
+            const description = `Menambahkan pengeluaran ${kategori}${unitUsahaText} sebesar ${formatCurrency(jumlah)}`;
+            
+            const ip = req.ip || req.connection.remoteAddress;
+            const userAgent = req.get('user-agent') || '';
+            
+            db.run(
+              `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+               VALUES (?, ?, ?, ?, ?, ?, ?)`,
+              [req.user.id, req.user.username, 'CREATE', 'Pengeluaran', description, ip, userAgent],
+              (logErr) => {
+                if (logErr) console.error('Error logging activity:', logErr);
+              }
+            );
+            
+            res.json({ message: 'Pengeluaran berhasil ditambahkan', id: this.lastID, bukti_pengeluaran });
+          }
+        );
+      } else {
+        // Insert without bukti_pengeluaran (backward compatibility)
+        db.run('INSERT INTO pengeluaran (unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan) VALUES (?, ?, ?, ?, ?)',
+          [unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan],
+          function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            
+            // Log activity
+            const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+            const unitUsahaText = unitUsahaName ? ` untuk ${unitUsahaName}` : '';
+            const description = `Menambahkan pengeluaran ${kategori}${unitUsahaText} sebesar ${formatCurrency(jumlah)}`;
+            
+            const ip = req.ip || req.connection.remoteAddress;
+            const userAgent = req.get('user-agent') || '';
+            
+            db.run(
+              `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+               VALUES (?, ?, ?, ?, ?, ?, ?)`,
+              [req.user.id, req.user.username, 'CREATE', 'Pengeluaran', description, ip, userAgent],
+              (logErr) => {
+                if (logErr) console.error('Error logging activity:', logErr);
+              }
+            );
+            
+            res.json({ message: 'Pengeluaran berhasil ditambahkan', id: this.lastID });
+          }
+        );
+      }
+    });
+  }
 });
 
 // ===== PARTISIPASI ANGGOTA =====
@@ -610,16 +800,87 @@ app.get('/api/partisipasi', authenticateToken, (req, res) => {
   });
 });
 
-app.post('/api/partisipasi', authenticateToken, (req, res) => {
+app.post('/api/partisipasi', authenticateToken, buktiUpload.single('bukti_partisipasi'), (req, res) => {
   const { anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan } = req.body;
+  const bukti_partisipasi = req.file ? req.file.filename : null;
   
-  db.run('INSERT INTO partisipasi_anggota (anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan) VALUES (?, ?, ?, ?, ?)',
-    [anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan],
-    function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: 'Partisipasi anggota berhasil ditambahkan', id: this.lastID });
+  // Get anggota name for activity log
+  db.get('SELECT nama_lengkap, nomor_anggota FROM anggota WHERE id = ?', [anggota_id], (err, anggota) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!anggota) return res.status(404).json({ error: 'Anggota tidak ditemukan' });
+    
+    // Get unit usaha name for activity log
+    if (unit_usaha_id) {
+      db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
+        insertPartisipasi(unitUsaha ? unitUsaha.nama_usaha : null);
+      });
+    } else {
+      insertPartisipasi(null);
     }
-  );
+    
+    function insertPartisipasi(unitUsahaName) {
+      // Check if bukti_partisipasi column exists
+      db.all("PRAGMA table_info(partisipasi_anggota)", [], (err, columns) => {
+        const hasBuktiColumn = columns && columns.some(col => col.name === 'bukti_partisipasi');
+        
+        if (hasBuktiColumn) {
+          // Insert with bukti_partisipasi
+          db.run('INSERT INTO partisipasi_anggota (anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan, bukti_partisipasi) VALUES (?, ?, ?, ?, ?, ?)',
+            [anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan, bukti_partisipasi],
+            function(err) {
+              if (err) return res.status(500).json({ error: err.message });
+              
+              // Log activity
+              const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+              const unitUsahaText = unitUsahaName ? ` di ${unitUsahaName}` : '';
+              const description = `Menambahkan partisipasi ${anggota.nama_lengkap} (${anggota.nomor_anggota})${unitUsahaText} sebesar ${formatCurrency(jumlah_transaksi)}`;
+              
+              const ip = req.ip || req.connection.remoteAddress;
+              const userAgent = req.get('user-agent') || '';
+              
+              db.run(
+                `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [req.user.id, req.user.username, 'CREATE', 'Partisipasi', description, ip, userAgent],
+                (logErr) => {
+                  if (logErr) console.error('Error logging activity:', logErr);
+                }
+              );
+              
+              res.json({ message: 'Partisipasi anggota berhasil ditambahkan', id: this.lastID, bukti_partisipasi });
+            }
+          );
+        } else {
+          // Insert without bukti_partisipasi (backward compatibility)
+          db.run('INSERT INTO partisipasi_anggota (anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan) VALUES (?, ?, ?, ?, ?)',
+            [anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan],
+            function(err) {
+              if (err) return res.status(500).json({ error: err.message });
+              
+              // Log activity
+              const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+              const unitUsahaText = unitUsahaName ? ` di ${unitUsahaName}` : '';
+              const description = `Menambahkan partisipasi ${anggota.nama_lengkap} (${anggota.nomor_anggota})${unitUsahaText} sebesar ${formatCurrency(jumlah_transaksi)}`;
+              
+              const ip = req.ip || req.connection.remoteAddress;
+              const userAgent = req.get('user-agent') || '';
+              
+              db.run(
+                `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [req.user.id, req.user.username, 'CREATE', 'Partisipasi', description, ip, userAgent],
+                (logErr) => {
+                  if (logErr) console.error('Error logging activity:', logErr);
+                }
+              );
+              
+              res.json({ message: 'Partisipasi anggota berhasil ditambahkan', id: this.lastID });
+            }
+          );
+        }
+      });
+    }
+  });
 });
 
 // ===== SHU ROUTES =====
@@ -1242,6 +1503,47 @@ app.delete('/api/kontak/:id', authenticateToken, (req, res) => {
   });
 });
 
+// ===== ACTIVITY LOG =====
+// Get activity log (admin only)
+app.get('/api/activity-log', authenticateToken, (req, res) => {
+  const { limit = 50, offset = 0 } = req.query;
+  
+  db.all(
+    `SELECT * FROM activity_log 
+     ORDER BY created_at DESC 
+     LIMIT ? OFFSET ?`,
+    [parseInt(limit), parseInt(offset)],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(rows);
+    }
+  );
+});
+
+// Get activity log count
+app.get('/api/activity-log/count', authenticateToken, (req, res) => {
+  db.get('SELECT COUNT(*) as total FROM activity_log', [], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ total: row.total });
+  });
+});
+
+// Get recent activity (for dashboard)
+app.get('/api/activity-log/recent', authenticateToken, (req, res) => {
+  const { limit = 10 } = req.query;
+  
+  db.all(
+    `SELECT * FROM activity_log 
+     ORDER BY created_at DESC 
+     LIMIT ?`,
+    [parseInt(limit)],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(rows);
+    }
+  );
+});
+
 app.listen(PORT, () => {
   console.log(`Server berjalan di http://localhost:${PORT}`);
   console.log('Login default: username=admin, password=admin123');
@@ -1249,23 +1551,120 @@ app.listen(PORT, () => {
 
 
 // ===== UPDATE & DELETE PARTISIPASI =====
-app.put('/api/partisipasi/:id', authenticateToken, (req, res) => {
+app.put('/api/partisipasi/:id', authenticateToken, buktiUpload.single('bukti_partisipasi'), (req, res) => {
   const { id } = req.params;
   const { anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan } = req.body;
+  const bukti_partisipasi = req.file ? req.file.filename : null;
   
-  db.run('UPDATE partisipasi_anggota SET anggota_id = ?, unit_usaha_id = ?, jumlah_transaksi = ?, tanggal_transaksi = ?, keterangan = ? WHERE id = ?',
-    [anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan, id],
-    function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: 'Partisipasi anggota berhasil diupdate' });
+  // Get anggota name for activity log
+  db.get('SELECT nama_lengkap, nomor_anggota FROM anggota WHERE id = ?', [anggota_id], (err, anggota) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!anggota) return res.status(404).json({ error: 'Anggota tidak ditemukan' });
+    
+    // Get unit usaha name for activity log
+    if (unit_usaha_id) {
+      db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
+        updatePartisipasi(unitUsaha ? unitUsaha.nama_usaha : null);
+      });
+    } else {
+      updatePartisipasi(null);
     }
-  );
+    
+    function updatePartisipasi(unitUsahaName) {
+      // Check if bukti_partisipasi column exists
+      db.all("PRAGMA table_info(partisipasi_anggota)", [], (err, columns) => {
+        const hasBuktiColumn = columns && columns.some(col => col.name === 'bukti_partisipasi');
+        
+        if (hasBuktiColumn && bukti_partisipasi) {
+          // Update with bukti_partisipasi
+          db.run('UPDATE partisipasi_anggota SET anggota_id = ?, unit_usaha_id = ?, jumlah_transaksi = ?, tanggal_transaksi = ?, keterangan = ?, bukti_partisipasi = ? WHERE id = ?',
+            [anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan, bukti_partisipasi, id],
+            function(err) {
+              if (err) return res.status(500).json({ error: err.message });
+              
+              // Log activity
+              const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+              const unitUsahaText = unitUsahaName ? ` di ${unitUsahaName}` : '';
+              const description = `Mengupdate partisipasi ${anggota.nama_lengkap} (${anggota.nomor_anggota})${unitUsahaText} menjadi ${formatCurrency(jumlah_transaksi)}`;
+              
+              const ip = req.ip || req.connection.remoteAddress;
+              const userAgent = req.get('user-agent') || '';
+              
+              db.run(
+                `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [req.user.id, req.user.username, 'UPDATE', 'Partisipasi', description, ip, userAgent],
+                (logErr) => {
+                  if (logErr) console.error('Error logging activity:', logErr);
+                }
+              );
+              
+              res.json({ message: 'Partisipasi anggota berhasil diupdate', bukti_partisipasi });
+            }
+          );
+        } else {
+          // Update without bukti_partisipasi
+          db.run('UPDATE partisipasi_anggota SET anggota_id = ?, unit_usaha_id = ?, jumlah_transaksi = ?, tanggal_transaksi = ?, keterangan = ? WHERE id = ?',
+            [anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan, id],
+            function(err) {
+              if (err) return res.status(500).json({ error: err.message });
+              
+              // Log activity
+              const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+              const unitUsahaText = unitUsahaName ? ` di ${unitUsahaName}` : '';
+              const description = `Mengupdate partisipasi ${anggota.nama_lengkap} (${anggota.nomor_anggota})${unitUsahaText} menjadi ${formatCurrency(jumlah_transaksi)}`;
+              
+              const ip = req.ip || req.connection.remoteAddress;
+              const userAgent = req.get('user-agent') || '';
+              
+              db.run(
+                `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [req.user.id, req.user.username, 'UPDATE', 'Partisipasi', description, ip, userAgent],
+                (logErr) => {
+                  if (logErr) console.error('Error logging activity:', logErr);
+                }
+              );
+              
+              res.json({ message: 'Partisipasi anggota berhasil diupdate' });
+            }
+          );
+        }
+      });
+    }
+  });
 });
 
 app.delete('/api/partisipasi/:id', authenticateToken, (req, res) => {
-  db.run('DELETE FROM partisipasi_anggota WHERE id = ?', [req.params.id], function(err) {
+  const { id } = req.params;
+  
+  // Get partisipasi data before delete for activity log
+  db.get('SELECT pa.*, a.nama_lengkap, a.nomor_anggota, uu.nama_usaha FROM partisipasi_anggota pa JOIN anggota a ON pa.anggota_id = a.id LEFT JOIN unit_usaha uu ON pa.unit_usaha_id = uu.id WHERE pa.id = ?', [id], (err, partisipasi) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: 'Partisipasi anggota berhasil dihapus' });
+    if (!partisipasi) return res.status(404).json({ error: 'Data partisipasi tidak ditemukan' });
+    
+    db.run('DELETE FROM partisipasi_anggota WHERE id = ?', [id], function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      
+      // Log activity
+      const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+      const unitUsahaText = partisipasi.nama_usaha ? ` di ${partisipasi.nama_usaha}` : '';
+      const description = `Menghapus partisipasi ${partisipasi.nama_lengkap} (${partisipasi.nomor_anggota})${unitUsahaText} sebesar ${formatCurrency(partisipasi.jumlah_transaksi)}`;
+      
+      const ip = req.ip || req.connection.remoteAddress;
+      const userAgent = req.get('user-agent') || '';
+      
+      db.run(
+        `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [req.user.id, req.user.username, 'DELETE', 'Partisipasi', description, ip, userAgent],
+        (logErr) => {
+          if (logErr) console.error('Error logging activity:', logErr);
+        }
+      );
+      
+      res.json({ message: 'Partisipasi anggota berhasil dihapus' });
+    });
   });
 });
 
@@ -1275,40 +1674,186 @@ app.put('/api/transaksi/penjualan/:id', authenticateToken, (req, res) => {
   const { unit_usaha_id, tanggal_transaksi, jumlah_penjualan, hpp, keterangan } = req.body;
   const keuntungan = parseFloat(jumlah_penjualan) - parseFloat(hpp || 0);
   
-  db.run('UPDATE transaksi_penjualan SET unit_usaha_id = ?, tanggal_transaksi = ?, jumlah_penjualan = ?, hpp = ?, keuntungan = ?, keterangan = ? WHERE id = ?',
-    [unit_usaha_id, tanggal_transaksi, jumlah_penjualan, hpp, keuntungan, keterangan, id],
-    function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: 'Transaksi penjualan berhasil diupdate' });
-    }
-  );
+  // Get unit usaha name for activity log
+  if (unit_usaha_id) {
+    db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
+      updatePenjualan(unitUsaha ? unitUsaha.nama_usaha : null);
+    });
+  } else {
+    updatePenjualan(null);
+  }
+  
+  function updatePenjualan(unitUsahaName) {
+    db.run('UPDATE transaksi_penjualan SET unit_usaha_id = ?, tanggal_transaksi = ?, jumlah_penjualan = ?, hpp = ?, keuntungan = ?, keterangan = ? WHERE id = ?',
+      [unit_usaha_id, tanggal_transaksi, jumlah_penjualan, hpp, keuntungan, keterangan, id],
+      function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        // Log activity
+        const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+        const unitUsahaText = unitUsahaName ? ` dari ${unitUsahaName}` : '';
+        const description = `Mengupdate penjualan${unitUsahaText} menjadi ${formatCurrency(jumlah_penjualan)} (Keuntungan: ${formatCurrency(keuntungan)})`;
+        
+        const ip = req.ip || req.connection.remoteAddress;
+        const userAgent = req.get('user-agent') || '';
+        
+        db.run(
+          `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [req.user.id, req.user.username, 'UPDATE', 'Penjualan', description, ip, userAgent],
+          (logErr) => {
+            if (logErr) console.error('Error logging activity:', logErr);
+          }
+        );
+        
+        res.json({ message: 'Transaksi penjualan berhasil diupdate' });
+      }
+    );
+  }
 });
 
 app.delete('/api/transaksi/penjualan/:id', authenticateToken, (req, res) => {
-  db.run('DELETE FROM transaksi_penjualan WHERE id = ?', [req.params.id], function(err) {
+  const { id } = req.params;
+  
+  // Get penjualan data before delete for activity log
+  db.get('SELECT tp.*, uu.nama_usaha FROM transaksi_penjualan tp LEFT JOIN unit_usaha uu ON tp.unit_usaha_id = uu.id WHERE tp.id = ?', [id], (err, penjualan) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: 'Transaksi penjualan berhasil dihapus' });
+    if (!penjualan) return res.status(404).json({ error: 'Data penjualan tidak ditemukan' });
+    
+    db.run('DELETE FROM transaksi_penjualan WHERE id = ?', [id], function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      
+      // Log activity
+      const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+      const unitUsahaText = penjualan.nama_usaha ? ` dari ${penjualan.nama_usaha}` : '';
+      const description = `Menghapus penjualan${unitUsahaText} sebesar ${formatCurrency(penjualan.jumlah_penjualan)}`;
+      
+      const ip = req.ip || req.connection.remoteAddress;
+      const userAgent = req.get('user-agent') || '';
+      
+      db.run(
+        `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [req.user.id, req.user.username, 'DELETE', 'Penjualan', description, ip, userAgent],
+        (logErr) => {
+          if (logErr) console.error('Error logging activity:', logErr);
+        }
+      );
+      
+      res.json({ message: 'Transaksi penjualan berhasil dihapus' });
+    });
   });
 });
 
 // ===== UPDATE & DELETE PENGELUARAN =====
-app.put('/api/transaksi/pengeluaran/:id', authenticateToken, (req, res) => {
+app.put('/api/transaksi/pengeluaran/:id', authenticateToken, buktiUpload.single('bukti_pengeluaran'), (req, res) => {
   const { id } = req.params;
   const { unit_usaha_id, kategori, qty, harga, jumlah, tanggal_transaksi, keterangan } = req.body;
+  const bukti_pengeluaran = req.file ? req.file.filename : null;
   
-  db.run('UPDATE pengeluaran SET unit_usaha_id = ?, kategori = ?, qty = ?, harga = ?, jumlah = ?, tanggal_transaksi = ?, keterangan = ? WHERE id = ?',
-    [unit_usaha_id, kategori, qty, harga, jumlah, tanggal_transaksi, keterangan, id],
-    function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: 'Pengeluaran berhasil diupdate' });
-    }
-  );
+  // Get unit usaha name for activity log
+  if (unit_usaha_id) {
+    db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
+      updatePengeluaran(unitUsaha ? unitUsaha.nama_usaha : null);
+    });
+  } else {
+    updatePengeluaran(null);
+  }
+  
+  function updatePengeluaran(unitUsahaName) {
+    // Check if bukti_pengeluaran column exists
+    db.all("PRAGMA table_info(pengeluaran)", [], (err, columns) => {
+      const hasBuktiColumn = columns && columns.some(col => col.name === 'bukti_pengeluaran');
+      
+      if (hasBuktiColumn && bukti_pengeluaran) {
+        // Update with bukti_pengeluaran
+        db.run('UPDATE pengeluaran SET unit_usaha_id = ?, kategori = ?, qty = ?, harga = ?, jumlah = ?, tanggal_transaksi = ?, keterangan = ?, bukti_pengeluaran = ? WHERE id = ?',
+          [unit_usaha_id, kategori, qty, harga, jumlah, tanggal_transaksi, keterangan, bukti_pengeluaran, id],
+          function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            
+            // Log activity
+            const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+            const unitUsahaText = unitUsahaName ? ` untuk ${unitUsahaName}` : '';
+            const description = `Mengupdate pengeluaran ${kategori}${unitUsahaText} menjadi ${formatCurrency(jumlah)}`;
+            
+            const ip = req.ip || req.connection.remoteAddress;
+            const userAgent = req.get('user-agent') || '';
+            
+            db.run(
+              `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+               VALUES (?, ?, ?, ?, ?, ?, ?)`,
+              [req.user.id, req.user.username, 'UPDATE', 'Pengeluaran', description, ip, userAgent],
+              (logErr) => {
+                if (logErr) console.error('Error logging activity:', logErr);
+              }
+            );
+            
+            res.json({ message: 'Pengeluaran berhasil diupdate', bukti_pengeluaran });
+          }
+        );
+      } else {
+        // Update without bukti_pengeluaran
+        db.run('UPDATE pengeluaran SET unit_usaha_id = ?, kategori = ?, qty = ?, harga = ?, jumlah = ?, tanggal_transaksi = ?, keterangan = ? WHERE id = ?',
+          [unit_usaha_id, kategori, qty, harga, jumlah, tanggal_transaksi, keterangan, id],
+          function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            
+            // Log activity
+            const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+            const unitUsahaText = unitUsahaName ? ` untuk ${unitUsahaName}` : '';
+            const description = `Mengupdate pengeluaran ${kategori}${unitUsahaText} menjadi ${formatCurrency(jumlah)}`;
+            
+            const ip = req.ip || req.connection.remoteAddress;
+            const userAgent = req.get('user-agent') || '';
+            
+            db.run(
+              `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+               VALUES (?, ?, ?, ?, ?, ?, ?)`,
+              [req.user.id, req.user.username, 'UPDATE', 'Pengeluaran', description, ip, userAgent],
+              (logErr) => {
+                if (logErr) console.error('Error logging activity:', logErr);
+              }
+            );
+            
+            res.json({ message: 'Pengeluaran berhasil diupdate' });
+          }
+        );
+      }
+    });
+  }
 });
 
 app.delete('/api/transaksi/pengeluaran/:id', authenticateToken, (req, res) => {
-  db.run('DELETE FROM pengeluaran WHERE id = ?', [req.params.id], function(err) {
+  const { id } = req.params;
+  
+  // Get pengeluaran data before delete for activity log
+  db.get('SELECT p.*, uu.nama_usaha FROM pengeluaran p LEFT JOIN unit_usaha uu ON p.unit_usaha_id = uu.id WHERE p.id = ?', [id], (err, pengeluaran) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: 'Pengeluaran berhasil dihapus' });
+    if (!pengeluaran) return res.status(404).json({ error: 'Data pengeluaran tidak ditemukan' });
+    
+    db.run('DELETE FROM pengeluaran WHERE id = ?', [id], function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      
+      // Log activity
+      const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+      const unitUsahaText = pengeluaran.nama_usaha ? ` untuk ${pengeluaran.nama_usaha}` : '';
+      const description = `Menghapus pengeluaran ${pengeluaran.kategori}${unitUsahaText} sebesar ${formatCurrency(pengeluaran.jumlah)}`;
+      
+      const ip = req.ip || req.connection.remoteAddress;
+      const userAgent = req.get('user-agent') || '';
+      
+      db.run(
+        `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [req.user.id, req.user.username, 'DELETE', 'Pengeluaran', description, ip, userAgent],
+        (logErr) => {
+          if (logErr) console.error('Error logging activity:', logErr);
+        }
+      );
+      
+      res.json({ message: 'Pengeluaran berhasil dihapus' });
+    });
   });
 });
 
@@ -1326,31 +1871,115 @@ app.get('/api/transaksi/pendapatan-lain', authenticateToken, (req, res) => {
 app.post('/api/transaksi/pendapatan-lain', authenticateToken, (req, res) => {
   const { unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan } = req.body;
   
-  db.run('INSERT INTO pendapatan_lain (unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan) VALUES (?, ?, ?, ?, ?)',
-    [unit_usaha_id || null, kategori, jumlah, tanggal_transaksi, keterangan],
-    function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: 'Pendapatan lain berhasil ditambahkan', id: this.lastID });
-    }
-  );
+  // Get unit usaha name for activity log
+  if (unit_usaha_id) {
+    db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
+      insertPendapatanLain(unitUsaha ? unitUsaha.nama_usaha : null);
+    });
+  } else {
+    insertPendapatanLain(null);
+  }
+  
+  function insertPendapatanLain(unitUsahaName) {
+    db.run('INSERT INTO pendapatan_lain (unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan) VALUES (?, ?, ?, ?, ?)',
+      [unit_usaha_id || null, kategori, jumlah, tanggal_transaksi, keterangan],
+      function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        // Log activity
+        const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+        const unitUsahaText = unitUsahaName ? ` dari ${unitUsahaName}` : '';
+        const description = `Menambahkan pendapatan lain ${kategori}${unitUsahaText} sebesar ${formatCurrency(jumlah)}`;
+        
+        const ip = req.ip || req.connection.remoteAddress;
+        const userAgent = req.get('user-agent') || '';
+        
+        db.run(
+          `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [req.user.id, req.user.username, 'CREATE', 'Pendapatan Lain', description, ip, userAgent],
+          (logErr) => {
+            if (logErr) console.error('Error logging activity:', logErr);
+          }
+        );
+        
+        res.json({ message: 'Pendapatan lain berhasil ditambahkan', id: this.lastID });
+      }
+    );
+  }
 });
 
 app.put('/api/transaksi/pendapatan-lain/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
   const { unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan } = req.body;
   
-  db.run('UPDATE pendapatan_lain SET unit_usaha_id = ?, kategori = ?, jumlah = ?, tanggal_transaksi = ?, keterangan = ? WHERE id = ?',
-    [unit_usaha_id || null, kategori, jumlah, tanggal_transaksi, keterangan, id],
-    function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: 'Pendapatan lain berhasil diupdate' });
-    }
-  );
+  // Get unit usaha name for activity log
+  if (unit_usaha_id) {
+    db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
+      updatePendapatanLain(unitUsaha ? unitUsaha.nama_usaha : null);
+    });
+  } else {
+    updatePendapatanLain(null);
+  }
+  
+  function updatePendapatanLain(unitUsahaName) {
+    db.run('UPDATE pendapatan_lain SET unit_usaha_id = ?, kategori = ?, jumlah = ?, tanggal_transaksi = ?, keterangan = ? WHERE id = ?',
+      [unit_usaha_id || null, kategori, jumlah, tanggal_transaksi, keterangan, id],
+      function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        // Log activity
+        const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+        const unitUsahaText = unitUsahaName ? ` dari ${unitUsahaName}` : '';
+        const description = `Mengupdate pendapatan lain ${kategori}${unitUsahaText} menjadi ${formatCurrency(jumlah)}`;
+        
+        const ip = req.ip || req.connection.remoteAddress;
+        const userAgent = req.get('user-agent') || '';
+        
+        db.run(
+          `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [req.user.id, req.user.username, 'UPDATE', 'Pendapatan Lain', description, ip, userAgent],
+          (logErr) => {
+            if (logErr) console.error('Error logging activity:', logErr);
+          }
+        );
+        
+        res.json({ message: 'Pendapatan lain berhasil diupdate' });
+      }
+    );
+  }
 });
 
 app.delete('/api/transaksi/pendapatan-lain/:id', authenticateToken, (req, res) => {
-  db.run('DELETE FROM pendapatan_lain WHERE id = ?', [req.params.id], function(err) {
+  const { id } = req.params;
+  
+  // Get pendapatan lain data before delete for activity log
+  db.get('SELECT pl.*, uu.nama_usaha FROM pendapatan_lain pl LEFT JOIN unit_usaha uu ON pl.unit_usaha_id = uu.id WHERE pl.id = ?', [id], (err, pendapatan) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: 'Pendapatan lain berhasil dihapus' });
+    if (!pendapatan) return res.status(404).json({ error: 'Data pendapatan lain tidak ditemukan' });
+    
+    db.run('DELETE FROM pendapatan_lain WHERE id = ?', [id], function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      
+      // Log activity
+      const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+      const unitUsahaText = pendapatan.nama_usaha ? ` dari ${pendapatan.nama_usaha}` : '';
+      const description = `Menghapus pendapatan lain ${pendapatan.kategori}${unitUsahaText} sebesar ${formatCurrency(pendapatan.jumlah)}`;
+      
+      const ip = req.ip || req.connection.remoteAddress;
+      const userAgent = req.get('user-agent') || '';
+      
+      db.run(
+        `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [req.user.id, req.user.username, 'DELETE', 'Pendapatan Lain', description, ip, userAgent],
+        (logErr) => {
+          if (logErr) console.error('Error logging activity:', logErr);
+        }
+      );
+      
+      res.json({ message: 'Pendapatan lain berhasil dihapus' });
+    });
   });
 });

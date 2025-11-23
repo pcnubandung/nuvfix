@@ -580,3 +580,77 @@
 .empty-state p {
   font-size: 14px;
 }
+
+
+/* Upload Buttons for Camera */
+.upload-buttons-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.upload-buttons-container .btn {
+  flex: 1;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.upload-buttons-container .btn-secondary {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.upload-buttons-container .btn-secondary:hover {
+  background: #e0e0e0;
+}
+
+.upload-buttons-container .btn-primary {
+  background: linear-gradient(135deg, var(--member-primary), var(--member-secondary));
+  color: white;
+}
+
+.upload-buttons-container .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+}
+
+.upload-buttons-container .btn i {
+  width: 18px;
+  height: 18px;
+}
+
+/* Mobile Optimization for Upload Buttons */
+@media (max-width: 480px) {
+  .upload-buttons-container {
+    flex-direction: column;
+  }
+  
+  .upload-buttons-container .btn {
+    width: 100%;
+    padding: 14px;
+  }
+}
+
+/* Preview Image Enhancement */
+#previewBuktiBayarMember img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+@media (max-width: 768px) {
+  #previewBuktiBayarMember img {
+    max-width: 100%;
+    max-height: 300px;
+  }
+}

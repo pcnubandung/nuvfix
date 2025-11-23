@@ -11,6 +11,56 @@ window.importSimpananExcel = function(jenis) {
   
   const modal = document.createElement('div');
   modal.className = 'modal active';
+  
+  // Template info berbeda untuk simpanan sukarela
+  const templateInfo = jenis === 'sukarela' ? `
+    <tr style="background: #fff;">
+      <td style="padding: 8px; border: 1px solid #ddd;"><strong>Nomor Anggota</strong></td>
+      <td style="padding: 8px; border: 1px solid #ddd;">Nomor anggota (wajib)</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border: 1px solid #ddd;"><strong>Jumlah</strong></td>
+      <td style="padding: 8px; border: 1px solid #ddd;">Nominal simpanan (wajib)</td>
+    </tr>
+    <tr style="background: #fff;">
+      <td style="padding: 8px; border: 1px solid #ddd;"><strong>Jenis</strong></td>
+      <td style="padding: 8px; border: 1px solid #ddd;">Setoran/Penarikan (wajib)</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border: 1px solid #ddd;"><strong>Tanggal</strong></td>
+      <td style="padding: 8px; border: 1px solid #ddd;">Format: YYYY-MM-DD</td>
+    </tr>
+    <tr style="background: #fff;">
+      <td style="padding: 8px; border: 1px solid #ddd;"><strong>Metode Pembayaran</strong></td>
+      <td style="padding: 8px; border: 1px solid #ddd;">Tunai/Transfer/dll</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border: 1px solid #ddd;"><strong>Keterangan</strong></td>
+      <td style="padding: 8px; border: 1px solid #ddd;">Catatan (opsional)</td>
+    </tr>
+  ` : `
+    <tr style="background: #fff;">
+      <td style="padding: 8px; border: 1px solid #ddd;"><strong>Nomor Anggota</strong></td>
+      <td style="padding: 8px; border: 1px solid #ddd;">Nomor anggota (wajib)</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border: 1px solid #ddd;"><strong>Jumlah</strong></td>
+      <td style="padding: 8px; border: 1px solid #ddd;">Nominal simpanan (wajib)</td>
+    </tr>
+    <tr style="background: #fff;">
+      <td style="padding: 8px; border: 1px solid #ddd;"><strong>Tanggal</strong></td>
+      <td style="padding: 8px; border: 1px solid #ddd;">Format: YYYY-MM-DD</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border: 1px solid #ddd;"><strong>Metode Pembayaran</strong></td>
+      <td style="padding: 8px; border: 1px solid #ddd;">Tunai/Transfer/dll</td>
+    </tr>
+    <tr style="background: #fff;">
+      <td style="padding: 8px; border: 1px solid #ddd;"><strong>Keterangan</strong></td>
+      <td style="padding: 8px; border: 1px solid #ddd;">Catatan (opsional)</td>
+    </tr>
+  `;
+  
   modal.innerHTML = `
     <div class="modal-content" style="max-width: 600px;">
       <div class="modal-header">
@@ -22,26 +72,7 @@ window.importSimpananExcel = function(jenis) {
         <div class="info-box" style="background: #E3F2FD; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
           <h4 style="margin: 0 0 12px 0; color: #1976D2;">📋 Format Excel yang Diperlukan:</h4>
           <table style="width: 100%; font-size: 13px;">
-            <tr style="background: #fff;">
-              <td style="padding: 8px; border: 1px solid #ddd;"><strong>Nomor Anggota</strong></td>
-              <td style="padding: 8px; border: 1px solid #ddd;">Nomor anggota (wajib)</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px; border: 1px solid #ddd;"><strong>Jumlah</strong></td>
-              <td style="padding: 8px; border: 1px solid #ddd;">Nominal simpanan (wajib)</td>
-            </tr>
-            <tr style="background: #fff;">
-              <td style="padding: 8px; border: 1px solid #ddd;"><strong>Tanggal</strong></td>
-              <td style="padding: 8px; border: 1px solid #ddd;">Format: YYYY-MM-DD</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px; border: 1px solid #ddd;"><strong>Metode Pembayaran</strong></td>
-              <td style="padding: 8px; border: 1px solid #ddd;">Tunai/Transfer/dll</td>
-            </tr>
-            <tr style="background: #fff;">
-              <td style="padding: 8px; border: 1px solid #ddd;"><strong>Keterangan</strong></td>
-              <td style="padding: 8px; border: 1px solid #ddd;">Catatan (opsional)</td>
-            </tr>
+            ${templateInfo}
           </table>
         </div>
         
@@ -84,11 +115,22 @@ window.downloadTemplateSimpanan = function(jenis) {
     'sukarela': 'Simpanan Sukarela'
   };
   
-  const columns = ['Nomor Anggota', 'Jumlah', 'Tanggal', 'Metode Pembayaran', 'Keterangan'];
-  const sampleData = [
-    ['A001', '100000', '2024-01-15', 'Transfer', 'Pembayaran bulan Januari'],
-    ['A002', '100000', '2024-01-15', 'Tunai', '']
-  ];
+  // Template berbeda untuk simpanan sukarela (ada kolom Jenis)
+  let columns, sampleData;
+  
+  if (jenis === 'sukarela') {
+    columns = ['Nomor Anggota', 'Jumlah', 'Jenis', 'Tanggal', 'Metode Pembayaran', 'Keterangan'];
+    sampleData = [
+      ['A001', '100000', 'Setoran', '2024-01-15', 'Transfer', 'Setoran awal'],
+      ['A002', '50000', 'Penarikan', '2024-01-20', 'Tunai', 'Penarikan darurat']
+    ];
+  } else {
+    columns = ['Nomor Anggota', 'Jumlah', 'Tanggal', 'Metode Pembayaran', 'Keterangan'];
+    sampleData = [
+      ['A001', '100000', '2024-01-15', 'Transfer', 'Pembayaran bulan Januari'],
+      ['A002', '100000', '2024-01-15', 'Tunai', '']
+    ];
+  }
   
   const ws = XLSX.utils.aoa_to_sheet([columns, ...sampleData]);
   const wb = XLSX.utils.book_new();
@@ -162,7 +204,13 @@ window.prosesImportSimpananExcel = async function(jenis) {
       };
       
       if (jenis === 'sukarela') {
-        postData.jenis = 'Setoran';
+        postData.jenis = row['Jenis'] || 'Setoran';
+        // Validasi jenis transaksi
+        if (!['Setoran', 'Penarikan'].includes(postData.jenis)) {
+          errorCount++;
+          errors.push(`Baris ${i + 2}: Jenis harus 'Setoran' atau 'Penarikan', bukan '${postData.jenis}'`);
+          continue;
+        }
       }
       
       try {

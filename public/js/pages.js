@@ -10,6 +10,7 @@ window.loadPage = async function(page) {
     'data-anggota': 'renderDataAnggota',
     'data-pengurus': 'renderDataPengurus',
     'data-karyawan': 'renderDataKaryawan',
+    'approval-simpanan': 'renderApprovalSimpanan',
     'simpanan-pokok': 'renderSimpanan',
     'simpanan-wajib': 'renderSimpanan',
     'simpanan-khusus': 'renderSimpanan',
@@ -161,11 +162,32 @@ window.renderBeranda = async function() {
         <canvas id="labaRugiChart"></canvas>
       </div>
     </div>
+    
+    <!-- Activity Log -->
+    <div class="card" style="margin-top: 30px;">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i data-feather="activity" style="width: 20px; height: 20px; margin-right: 8px;"></i>
+          Aktivitas Terkini
+        </h3>
+        <button class="btn btn-secondary" onclick="refreshActivity()" title="Refresh">
+          <i data-feather="refresh-cw"></i> Refresh
+        </button>
+      </div>
+      <div class="card-body">
+        <div id="activityLogContainer">
+          <div class="loading">Memuat aktivitas...</div>
+        </div>
+      </div>
+    </div>
   `;
   
   // Render charts
   window.renderSimpananChart();
   window.renderLabaRugiChart();
+  
+  // Load activity log
+  window.loadRecentActivity();
 }
 
 window.renderSimpananChart = async function() {
@@ -600,7 +622,6 @@ window.createSearchableAnggotaSelect = function(containerId, name = 'anggota_id'
         style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 5px;"
       >
       <select 
-        name="${name}" 
         id="${containerId}_select" 
         ${required ? 'required' : ''}
         size="8"
@@ -835,6 +856,7 @@ function renderAnggotaTable(updateOnly = false) {
               <th>Nama Lengkap</th>
               <th>NIK</th>
               <th>Telepon</th>
+              <th>Foto KTP</th>
               <th>Tanggal Bergabung</th>
               <th>Status</th>
               <th>Aksi</th>
@@ -849,6 +871,13 @@ function renderAnggotaTable(updateOnly = false) {
                 <td>${item.nama_lengkap}</td>
                 <td>${item.nik || '-'}</td>
                 <td>${item.nomor_telpon || '-'}</td>
+                <td style="text-align: center;">
+                  ${item.foto_ktp ? `
+                    <button class="btn btn-sm btn-info" onclick="viewFotoKTP('${item.foto_ktp}')" title="Lihat Foto KTP">
+                      <i data-feather="image"></i> Lihat
+                    </button>
+                  ` : '<span style="color: #999; font-size: 12px;">Tidak ada</span>'}
+                </td>
                 <td>${item.tanggal_bergabung ? new Date(item.tanggal_bergabung).toLocaleDateString('id-ID') : '-'}</td>
                 <td><span class="badge badge-${item.status === 'aktif' ? 'success' : 'danger'}">${item.status}</span></td>
                 <td>
@@ -1009,9 +1038,18 @@ window.tambahAnggota = function() {
           </div>
         </div>
         
-        <div class="form-group">
-          <label>Foto</label>
-          <input type="file" name="foto" accept="image/*">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Foto Profil</label>
+            <input type="file" name="foto" accept="image/*" onchange="previewImage(this, 'previewFoto')">
+            <div id="previewFoto" style="margin-top: 10px;"></div>
+          </div>
+          <div class="form-group">
+            <label>Foto KTP</label>
+            <input type="file" name="foto_ktp" accept="image/*,.pdf" onchange="previewImage(this, 'previewKTP')">
+            <small style="color: #666; font-size: 12px;">Format: JPG, PNG, PDF. Max 5MB</small>
+            <div id="previewKTP" style="margin-top: 10px;"></div>
+          </div>
         </div>
         
         <div class="btn-group">
@@ -1541,6 +1579,47 @@ window.tambahSimpananUnified = function() {
             <textarea name="keterangan"></textarea>
           </div>
           
+          <div class="form-group">
+            <label>Bukti Pembayaran (Opsional)</label>
+            
+            <!-- Tombol pilihan upload -->
+            <div class="upload-buttons-container">
+              <button type="button" 
+                      onclick="triggerFileUploadSimpanan()" 
+                      class="btn btn-secondary">
+                <i data-feather="upload"></i>
+                <span>Pilih File</span>
+              </button>
+              <button type="button" 
+                      onclick="triggerCameraCaptureSimpanan()" 
+                      class="btn btn-info">
+                <i data-feather="camera"></i>
+                <span>Ambil Foto</span>
+              </button>
+            </div>
+            
+            <!-- Input file (hidden) -->
+            <input type="file" 
+                   name="bukti_pembayaran" 
+                   id="buktiSimpanan"
+                   accept="image/*,.pdf" 
+                   onchange="previewBuktiSimpanan(this)"
+                   style="display: none;">
+            
+            <!-- Input camera (hidden) -->
+            <input type="file" 
+                   id="buktiSimpananCamera"
+                   accept="image/*" 
+                   capture="environment"
+                   onchange="handleCameraCaptureSimpanan(this)"
+                   style="display: none;">
+            
+            <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
+              Format: JPG, PNG, PDF. Maksimal 5MB. Upload foto/scan bukti transfer atau struk.
+            </small>
+            <div id="previewBuktiSimpanan" style="margin-top: 15px;"></div>
+          </div>
+          
           <div class="btn-group">
             <button type="submit" class="btn btn-primary">Simpan</button>
             <button type="button" class="btn btn-danger" onclick="this.closest('.modal').remove()">Batal</button>
@@ -1550,6 +1629,7 @@ window.tambahSimpananUnified = function() {
     `;
     
     document.body.appendChild(modal);
+    feather.replace();
     
     // Initialize searchable select for anggota
     createSearchableAnggotaSelect('anggotaSelectContainer', 'anggota_id', true);
@@ -1569,20 +1649,35 @@ window.tambahSimpananUnified = function() {
     document.getElementById('tambahSimpananForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const formData = new FormData(e.target);
-      const data = Object.fromEntries(formData);
-      
-      const jenis = data.jenis_simpanan;
-      delete data.jenis_simpanan;
+      const jenis = formData.get('jenis_simpanan');
+      formData.delete('jenis_simpanan');
       
       // Remove jenis field if not sukarela
       if (jenis !== 'sukarela') {
-        delete data.jenis;
+        formData.delete('jenis');
       }
       
-      const result = await API.post(`/api/simpanan/${jenis}`, data);
-      alert(result.message);
-      modal.remove();
-      renderSimpanan();
+      try {
+        const response = await fetch(`/api/simpanan/${jenis}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: formData // Send FormData directly for file upload
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          alert(result.message);
+          modal.remove();
+          renderSimpanan();
+        } else {
+          alert('Error: ' + result.error);
+        }
+      } catch (error) {
+        alert('Terjadi kesalahan: ' + error.message);
+      }
     });
   });
 };
@@ -1660,6 +1755,56 @@ window.editSimpanan = async function(id, jenis) {
           <textarea name="keterangan">${item.keterangan || ''}</textarea>
         </div>
         
+        <div class="form-group">
+          <label>Bukti Pembayaran (Opsional)</label>
+          
+          ${item.bukti_pembayaran ? `
+            <div style="margin-bottom: 10px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+              <small style="color: #666;">Bukti saat ini: ${item.bukti_pembayaran}</small>
+              <button type="button" class="btn btn-sm btn-info" onclick="window.open('/uploads/${item.bukti_pembayaran}', '_blank')" style="margin-left: 10px;">
+                <i data-feather="eye"></i> Lihat
+              </button>
+            </div>
+          ` : ''}
+          
+          <!-- Tombol pilihan upload -->
+          <div class="upload-buttons-container">
+            <button type="button" 
+                    onclick="triggerFileUploadSimpananEdit()" 
+                    class="btn btn-secondary">
+              <i data-feather="upload"></i>
+              <span>Pilih File</span>
+            </button>
+            <button type="button" 
+                    onclick="triggerCameraCaptureSimpananEdit()" 
+                    class="btn btn-info">
+              <i data-feather="camera"></i>
+              <span>Ambil Foto</span>
+            </button>
+          </div>
+          
+          <!-- Input file (hidden) -->
+          <input type="file" 
+                 name="bukti_pembayaran" 
+                 id="buktiSimpananEdit"
+                 accept="image/*,.pdf" 
+                 onchange="previewBuktiSimpananEdit(this)"
+                 style="display: none;">
+          
+          <!-- Input camera (hidden) -->
+          <input type="file" 
+                 id="buktiSimpananCameraEdit"
+                 accept="image/*" 
+                 capture="environment"
+                 onchange="handleCameraCaptureSimpananEdit(this)"
+                 style="display: none;">
+          
+          <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
+            Format: JPG, PNG, PDF. Maksimal 5MB. Kosongkan jika tidak ingin mengubah.
+          </small>
+          <div id="previewBuktiSimpananEdit" style="margin-top: 15px;"></div>
+        </div>
+        
         <div class="btn-group">
           <button type="submit" class="btn btn-primary">Update</button>
           <button type="button" class="btn btn-danger" onclick="this.closest('.modal').remove()">Batal</button>
@@ -1669,16 +1814,34 @@ window.editSimpanan = async function(id, jenis) {
   `;
   
   document.body.appendChild(modal);
+  feather.replace();
   
   document.getElementById('editSimpananForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const data = Object.fromEntries(formData);
     
-    const result = await API.put(`/api/simpanan/${jenis}/${id}`, data);
-    alert(result.message);
-    modal.remove();
-    renderSimpanan();
+    try {
+      const response = await fetch(`/api/simpanan/${jenis}/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          // Don't set Content-Type, let browser set it for multipart/form-data
+        },
+        body: formData // Send FormData directly for file upload
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        alert(result.message);
+        modal.remove();
+        renderSimpanan();
+      } else {
+        alert('Error: ' + result.error);
+      }
+    } catch (error) {
+      alert('Terjadi kesalahan: ' + error.message);
+    }
   });
 };
 
@@ -1806,6 +1969,47 @@ window.tambahPartisipasi = async function() {
           <textarea name="keterangan"></textarea>
         </div>
         
+        <div class="form-group">
+          <label>Bukti Partisipasi (Opsional)</label>
+          
+          <!-- Tombol pilihan upload -->
+          <div class="upload-buttons-container">
+            <button type="button" 
+                    onclick="triggerFileUploadPartisipasi()" 
+                    class="btn btn-secondary">
+              <i data-feather="upload"></i>
+              <span>Pilih File</span>
+            </button>
+            <button type="button" 
+                    onclick="triggerCameraCapturePartisipasi()" 
+                    class="btn btn-info">
+              <i data-feather="camera"></i>
+              <span>Ambil Foto</span>
+            </button>
+          </div>
+          
+          <!-- Input file (hidden) -->
+          <input type="file" 
+                 name="bukti_partisipasi" 
+                 id="buktiPartisipasi"
+                 accept="image/*,.pdf" 
+                 onchange="previewBuktiPartisipasi(this)"
+                 style="display: none;">
+          
+          <!-- Input camera (hidden) -->
+          <input type="file" 
+                 id="buktiPartisipasiCamera"
+                 accept="image/*" 
+                 capture="environment"
+                 onchange="handleCameraCapturePartisipasi(this)"
+                 style="display: none;">
+          
+          <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
+            Format: JPG, PNG, PDF. Maksimal 5MB. Upload foto/scan bukti transaksi atau nota.
+          </small>
+          <div id="previewBuktiPartisipasi" style="margin-top: 15px;"></div>
+        </div>
+        
         <div class="btn-group">
           <button type="submit" class="btn btn-primary">Simpan</button>
           <button type="button" class="btn btn-danger" onclick="this.closest('.modal').remove()">Batal</button>
@@ -1815,6 +2019,7 @@ window.tambahPartisipasi = async function() {
   `;
   
   document.body.appendChild(modal);
+  feather.replace();
   
   // Initialize searchable select for anggota
   createSearchableAnggotaSelect('anggotaSelectContainerPartisipasi', 'anggota_id', true);
@@ -1822,9 +2027,8 @@ window.tambahPartisipasi = async function() {
   document.getElementById('tambahPartisipasiForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const data = Object.fromEntries(formData);
     
-    const result = await API.post('/api/partisipasi', data);
+    const result = await API.postFormData('/api/partisipasi', formData);
     alert(result.message);
     modal.remove();
     window.renderPartisipasiAnggota();
@@ -1884,6 +2088,56 @@ window.editPartisipasi = async function(id) {
           <textarea name="keterangan">${item.keterangan || ''}</textarea>
         </div>
         
+        <div class="form-group">
+          <label>Bukti Partisipasi (Opsional)</label>
+          
+          ${item.bukti_partisipasi ? `
+            <div style="margin-bottom: 10px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+              <small style="color: #666;">Bukti saat ini: ${item.bukti_partisipasi}</small>
+              <button type="button" class="btn btn-sm btn-info" onclick="window.open('/uploads/${item.bukti_partisipasi}', '_blank')" style="margin-left: 10px;">
+                <i data-feather="eye"></i> Lihat
+              </button>
+            </div>
+          ` : ''}
+          
+          <!-- Tombol pilihan upload -->
+          <div class="upload-buttons-container">
+            <button type="button" 
+                    onclick="triggerFileUploadPartisipasiEdit()" 
+                    class="btn btn-secondary">
+              <i data-feather="upload"></i>
+              <span>Pilih File</span>
+            </button>
+            <button type="button" 
+                    onclick="triggerCameraCapturePartisipasiEdit()" 
+                    class="btn btn-info">
+              <i data-feather="camera"></i>
+              <span>Ambil Foto</span>
+            </button>
+          </div>
+          
+          <!-- Input file (hidden) -->
+          <input type="file" 
+                 name="bukti_partisipasi" 
+                 id="buktiPartisipasiEdit"
+                 accept="image/*,.pdf" 
+                 onchange="previewBuktiPartisipasiEdit(this)"
+                 style="display: none;">
+          
+          <!-- Input camera (hidden) -->
+          <input type="file" 
+                 id="buktiPartisipasiCameraEdit"
+                 accept="image/*" 
+                 capture="environment"
+                 onchange="handleCameraCapturePartisipasiEdit(this)"
+                 style="display: none;">
+          
+          <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
+            Format: JPG, PNG, PDF. Maksimal 5MB. Kosongkan jika tidak ingin mengubah.
+          </small>
+          <div id="previewBuktiPartisipasiEdit" style="margin-top: 15px;"></div>
+        </div>
+        
         <div class="btn-group">
           <button type="submit" class="btn btn-primary">Update</button>
           <button type="button" class="btn btn-danger" onclick="this.closest('.modal').remove()">Batal</button>
@@ -1893,13 +2147,13 @@ window.editPartisipasi = async function(id) {
   `;
   
   document.body.appendChild(modal);
+  feather.replace();
   
   document.getElementById('editPartisipasiForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const data = Object.fromEntries(formData);
     
-    const result = await API.put(`/api/partisipasi/${id}`, data);
+    const result = await API.putFormData(`/api/partisipasi/${id}`, formData);
     alert(result.message);
     modal.remove();
     window.renderPartisipasiAnggota();
@@ -2172,6 +2426,47 @@ window.tambahPengeluaran = async function() {
           <textarea name="keterangan"></textarea>
         </div>
         
+        <div class="form-group">
+          <label>Bukti Pengeluaran (Opsional)</label>
+          
+          <!-- Tombol pilihan upload -->
+          <div class="upload-buttons-container">
+            <button type="button" 
+                    onclick="triggerFileUploadPengeluaran()" 
+                    class="btn btn-secondary">
+              <i data-feather="upload"></i>
+              <span>Pilih File</span>
+            </button>
+            <button type="button" 
+                    onclick="triggerCameraCapturePengeluaran()" 
+                    class="btn btn-info">
+              <i data-feather="camera"></i>
+              <span>Ambil Foto</span>
+            </button>
+          </div>
+          
+          <!-- Input file (hidden) -->
+          <input type="file" 
+                 name="bukti_pengeluaran" 
+                 id="buktiPengeluaran"
+                 accept="image/*,.pdf" 
+                 onchange="previewBuktiPengeluaran(this)"
+                 style="display: none;">
+          
+          <!-- Input camera (hidden) -->
+          <input type="file" 
+                 id="buktiPengeluaranCamera"
+                 accept="image/*" 
+                 capture="environment"
+                 onchange="handleCameraCapturePengeluaran(this)"
+                 style="display: none;">
+          
+          <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
+            Format: JPG, PNG, PDF. Maksimal 5MB. Upload foto/scan nota atau kwitansi.
+          </small>
+          <div id="previewBuktiPengeluaran" style="margin-top: 15px;"></div>
+        </div>
+        
         <div class="btn-group">
           <button type="submit" class="btn btn-primary">Simpan</button>
           <button type="button" class="btn btn-danger" onclick="this.closest('.modal').remove()">Batal</button>
@@ -2181,6 +2476,7 @@ window.tambahPengeluaran = async function() {
   `;
   
   document.body.appendChild(modal);
+  feather.replace();
   
   // Auto-calculate jumlah
   const qtyInput = document.getElementById('qtyPengeluaran');
@@ -2199,9 +2495,8 @@ window.tambahPengeluaran = async function() {
   document.getElementById('tambahPengeluaranForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const data = Object.fromEntries(formData);
     
-    const result = await API.post('/api/transaksi/pengeluaran', data);
+    const result = await API.postFormData('/api/transaksi/pengeluaran', formData);
     alert(result.message);
     modal.remove();
     window.renderPengeluaran();
@@ -2285,6 +2580,56 @@ window.editPengeluaran = async function(id) {
           <textarea name="keterangan">${item.keterangan || ''}</textarea>
         </div>
         
+        <div class="form-group">
+          <label>Bukti Pengeluaran (Opsional)</label>
+          
+          ${item.bukti_pengeluaran ? `
+            <div style="margin-bottom: 10px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+              <small style="color: #666;">Bukti saat ini: ${item.bukti_pengeluaran}</small>
+              <button type="button" class="btn btn-sm btn-info" onclick="window.open('/uploads/${item.bukti_pengeluaran}', '_blank')" style="margin-left: 10px;">
+                <i data-feather="eye"></i> Lihat
+              </button>
+            </div>
+          ` : ''}
+          
+          <!-- Tombol pilihan upload -->
+          <div class="upload-buttons-container">
+            <button type="button" 
+                    onclick="triggerFileUploadPengeluaranEdit()" 
+                    class="btn btn-secondary">
+              <i data-feather="upload"></i>
+              <span>Pilih File</span>
+            </button>
+            <button type="button" 
+                    onclick="triggerCameraCapturePengeluaranEdit()" 
+                    class="btn btn-info">
+              <i data-feather="camera"></i>
+              <span>Ambil Foto</span>
+            </button>
+          </div>
+          
+          <!-- Input file (hidden) -->
+          <input type="file" 
+                 name="bukti_pengeluaran" 
+                 id="buktiPengeluaranEdit"
+                 accept="image/*,.pdf" 
+                 onchange="previewBuktiPengeluaranEdit(this)"
+                 style="display: none;">
+          
+          <!-- Input camera (hidden) -->
+          <input type="file" 
+                 id="buktiPengeluaranCameraEdit"
+                 accept="image/*" 
+                 capture="environment"
+                 onchange="handleCameraCapturePengeluaranEdit(this)"
+                 style="display: none;">
+          
+          <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
+            Format: JPG, PNG, PDF. Maksimal 5MB. Kosongkan jika tidak ingin mengubah.
+          </small>
+          <div id="previewBuktiPengeluaranEdit" style="margin-top: 15px;"></div>
+        </div>
+        
         <div class="btn-group">
           <button type="submit" class="btn btn-primary">Update</button>
           <button type="button" class="btn btn-danger" onclick="this.closest('.modal').remove()">Batal</button>
@@ -2294,6 +2639,7 @@ window.editPengeluaran = async function(id) {
   `;
   
   document.body.appendChild(modal);
+  feather.replace();
   
   // Auto-calculate jumlah for edit form
   const qtyInputEdit = document.getElementById('qtyPengeluaranEdit');
@@ -2312,9 +2658,8 @@ window.editPengeluaran = async function(id) {
   document.getElementById('editPengeluaranForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const data = Object.fromEntries(formData);
     
-    const result = await API.put(`/api/transaksi/pengeluaran/${id}`, data);
+    const result = await API.putFormData(`/api/transaksi/pengeluaran/${id}`, formData);
     alert(result.message);
     modal.remove();
     window.renderPengeluaran();
@@ -4685,17 +5030,33 @@ window.editAnggota = async function(id) {
           </div>
         </div>
         
+        <div class="form-group">
+          <label>Status</label>
+          <select name="status">
+            <option value="aktif" ${anggota.status === 'aktif' ? 'selected' : ''}>Aktif</option>
+            <option value="nonaktif" ${anggota.status === 'nonaktif' ? 'selected' : ''}>Non-Aktif</option>
+          </select>
+        </div>
+        
         <div class="form-row">
           <div class="form-group">
-            <label>Status</label>
-            <select name="status">
-              <option value="aktif" ${anggota.status === 'aktif' ? 'selected' : ''}>Aktif</option>
-              <option value="nonaktif" ${anggota.status === 'nonaktif' ? 'selected' : ''}>Non-Aktif</option>
-            </select>
+            <label>Foto Profil</label>
+            ${anggota.foto ? `<div style="margin-bottom: 10px;"><img src="/uploads/${anggota.foto}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;"></div>` : ''}
+            <input type="file" name="foto" accept="image/*" onchange="previewImage(this, 'previewFotoEdit')">
+            <div id="previewFotoEdit" style="margin-top: 10px;"></div>
           </div>
           <div class="form-group">
-            <label>Foto</label>
-            <input type="file" name="foto" accept="image/*">
+            <label>Foto KTP</label>
+            ${anggota.foto_ktp ? `
+              <div style="margin-bottom: 10px;">
+                <button type="button" class="btn btn-sm btn-info" onclick="viewFotoKTP('${anggota.foto_ktp}')">
+                  <i data-feather="image"></i> Lihat KTP Saat Ini
+                </button>
+              </div>
+            ` : ''}
+            <input type="file" name="foto_ktp" accept="image/*,.pdf" onchange="previewImage(this, 'previewKTPEdit')">
+            <small style="color: #666; font-size: 12px;">Format: JPG, PNG, PDF. Max 5MB</small>
+            <div id="previewKTPEdit" style="margin-top: 10px;"></div>
           </div>
         </div>
         
@@ -5861,3 +6222,1023 @@ window.cetakPartisipasiUnified = async function() {
 window.hapusPenjualan = window.deletePenjualan;
 window.hapusPengeluaran = window.deletePengeluaran;
 window.hapusPendapatanLain = window.deletePendapatanLain;
+
+
+// ===== BUKTI PENGELUARAN UPLOAD FUNCTIONS =====
+
+// Trigger file upload for pengeluaran
+window.triggerFileUploadPengeluaran = function() {
+  document.getElementById('buktiPengeluaran').click();
+};
+
+// Trigger camera capture for pengeluaran
+window.triggerCameraCapturePengeluaran = function() {
+  document.getElementById('buktiPengeluaranCamera').click();
+};
+
+// Handle camera capture for pengeluaran
+window.handleCameraCapturePengeluaran = function(input) {
+  const file = input.files[0];
+  
+  if (!file) return;
+  
+  // Validate size (5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    alert('File terlalu besar! Maksimal 5MB');
+    input.value = '';
+    return;
+  }
+  
+  // Transfer file to main input
+  const mainInput = document.getElementById('buktiPengeluaran');
+  const dataTransfer = new DataTransfer();
+  dataTransfer.items.add(file);
+  mainInput.files = dataTransfer.files;
+  
+  // Trigger preview
+  previewBuktiPengeluaran(mainInput);
+  
+  // Clear camera input
+  input.value = '';
+};
+
+// Preview bukti pengeluaran
+window.previewBuktiPengeluaran = function(input) {
+  const file = input.files[0];
+  const preview = document.getElementById('previewBuktiPengeluaran');
+  
+  if (!preview) return;
+  
+  if (file) {
+    // Validate size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File terlalu besar! Maksimal 5MB');
+      input.value = '';
+      preview.innerHTML = '';
+      return;
+    }
+    
+    // Validate type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Format file tidak didukung! Gunakan JPG, PNG, GIF, atau PDF');
+      input.value = '';
+      preview.innerHTML = '';
+      return;
+    }
+    
+    // Show preview
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        preview.innerHTML = `
+          <div style="text-align: center; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+            <img src="${e.target.result}" 
+                 style="max-width: 300px; max-height: 200px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">
+              ✓ ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+            </p>
+          </div>
+        `;
+      };
+      reader.readAsDataURL(file);
+    } else if (file.type === 'application/pdf') {
+      preview.innerHTML = `
+        <div style="padding: 15px; background: #f5f5f5; border-radius: 8px; text-align: center;">
+          <i data-feather="file-text" style="width: 48px; height: 48px; color: #d32f2f;"></i>
+          <p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">
+            ✓ ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+          </p>
+        </div>
+      `;
+      feather.replace();
+    }
+  } else {
+    preview.innerHTML = '';
+  }
+};
+
+
+// Trigger file upload for pengeluaran edit
+window.triggerFileUploadPengeluaranEdit = function() {
+  document.getElementById('buktiPengeluaranEdit').click();
+};
+
+// Trigger camera capture for pengeluaran edit
+window.triggerCameraCapturePengeluaranEdit = function() {
+  document.getElementById('buktiPengeluaranCameraEdit').click();
+};
+
+// Handle camera capture for pengeluaran edit
+window.handleCameraCapturePengeluaranEdit = function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  if (file.size > 5 * 1024 * 1024) {
+    alert('File terlalu besar! Maksimal 5MB');
+    input.value = '';
+    return;
+  }
+  
+  const mainInput = document.getElementById('buktiPengeluaranEdit');
+  const dataTransfer = new DataTransfer();
+  dataTransfer.items.add(file);
+  mainInput.files = dataTransfer.files;
+  
+  previewBuktiPengeluaranEdit(mainInput);
+  input.value = '';
+};
+
+// Preview bukti pengeluaran edit
+window.previewBuktiPengeluaranEdit = function(input) {
+  const file = input.files[0];
+  const preview = document.getElementById('previewBuktiPengeluaranEdit');
+  
+  if (!preview) return;
+  
+  if (file) {
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File terlalu besar! Maksimal 5MB');
+      input.value = '';
+      preview.innerHTML = '';
+      return;
+    }
+    
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Format file tidak didukung! Gunakan JPG, PNG, GIF, atau PDF');
+      input.value = '';
+      preview.innerHTML = '';
+      return;
+    }
+    
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        preview.innerHTML = `
+          <div style="text-align: center; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+            <img src="${e.target.result}" 
+                 style="max-width: 300px; max-height: 200px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">
+              ✓ ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+            </p>
+          </div>
+        `;
+      };
+      reader.readAsDataURL(file);
+    } else if (file.type === 'application/pdf') {
+      preview.innerHTML = `
+        <div style="padding: 15px; background: #f5f5f5; border-radius: 8px; text-align: center;">
+          <i data-feather="file-text" style="width: 48px; height: 48px; color: #d32f2f;"></i>
+          <p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">
+            ✓ ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+          </p>
+        </div>
+      `;
+      feather.replace();
+    }
+  } else {
+    preview.innerHTML = '';
+  }
+};
+
+
+// ===== BUKTI PARTISIPASI UPLOAD FUNCTIONS =====
+
+// Trigger file upload for partisipasi
+window.triggerFileUploadPartisipasi = function() {
+  document.getElementById('buktiPartisipasi').click();
+};
+
+// Trigger camera capture for partisipasi
+window.triggerCameraCapturePartisipasi = function() {
+  document.getElementById('buktiPartisipasiCamera').click();
+};
+
+// Handle camera capture for partisipasi
+window.handleCameraCapturePartisipasi = function(input) {
+  const file = input.files[0];
+  
+  if (!file) return;
+  
+  // Validate size (5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    alert('File terlalu besar! Maksimal 5MB');
+    input.value = '';
+    return;
+  }
+  
+  // Transfer file to main input
+  const mainInput = document.getElementById('buktiPartisipasi');
+  const dataTransfer = new DataTransfer();
+  dataTransfer.items.add(file);
+  mainInput.files = dataTransfer.files;
+  
+  // Trigger preview
+  previewBuktiPartisipasi(mainInput);
+  
+  // Clear camera input
+  input.value = '';
+};
+
+// Preview bukti partisipasi
+window.previewBuktiPartisipasi = function(input) {
+  const file = input.files[0];
+  const preview = document.getElementById('previewBuktiPartisipasi');
+  
+  if (!preview) return;
+  
+  if (file) {
+    // Validate size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File terlalu besar! Maksimal 5MB');
+      input.value = '';
+      preview.innerHTML = '';
+      return;
+    }
+    
+    // Validate type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Format file tidak didukung! Gunakan JPG, PNG, GIF, atau PDF');
+      input.value = '';
+      preview.innerHTML = '';
+      return;
+    }
+    
+    // Show preview
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        preview.innerHTML = `
+          <div style="text-align: center; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+            <img src="${e.target.result}" 
+                 style="max-width: 300px; max-height: 200px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">
+              ✓ ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+            </p>
+          </div>
+        `;
+      };
+      reader.readAsDataURL(file);
+    } else if (file.type === 'application/pdf') {
+      preview.innerHTML = `
+        <div style="padding: 15px; background: #f5f5f5; border-radius: 8px; text-align: center;">
+          <i data-feather="file-text" style="width: 48px; height: 48px; color: #d32f2f;"></i>
+          <p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">
+            ✓ ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+          </p>
+        </div>
+      `;
+      feather.replace();
+    }
+  } else {
+    preview.innerHTML = '';
+  }
+};
+
+
+// Trigger file upload for partisipasi edit
+window.triggerFileUploadPartisipasiEdit = function() {
+  document.getElementById('buktiPartisipasiEdit').click();
+};
+
+// Trigger camera capture for partisipasi edit
+window.triggerCameraCapturePartisipasiEdit = function() {
+  document.getElementById('buktiPartisipasiCameraEdit').click();
+};
+
+// Handle camera capture for partisipasi edit
+window.handleCameraCapturePartisipasiEdit = function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  if (file.size > 5 * 1024 * 1024) {
+    alert('File terlalu besar! Maksimal 5MB');
+    input.value = '';
+    return;
+  }
+  
+  const mainInput = document.getElementById('buktiPartisipasiEdit');
+  const dataTransfer = new DataTransfer();
+  dataTransfer.items.add(file);
+  mainInput.files = dataTransfer.files;
+  
+  previewBuktiPartisipasiEdit(mainInput);
+  input.value = '';
+};
+
+// Preview bukti partisipasi edit
+window.previewBuktiPartisipasiEdit = function(input) {
+  const file = input.files[0];
+  const preview = document.getElementById('previewBuktiPartisipasiEdit');
+  
+  if (!preview) return;
+  
+  if (file) {
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File terlalu besar! Maksimal 5MB');
+      input.value = '';
+      preview.innerHTML = '';
+      return;
+    }
+    
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Format file tidak didukung! Gunakan JPG, PNG, GIF, atau PDF');
+      input.value = '';
+      preview.innerHTML = '';
+      return;
+    }
+    
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        preview.innerHTML = `
+          <div style="text-align: center; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+            <img src="${e.target.result}" 
+                 style="max-width: 300px; max-height: 200px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">
+              ✓ ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+            </p>
+          </div>
+        `;
+      };
+      reader.readAsDataURL(file);
+    } else if (file.type === 'application/pdf') {
+      preview.innerHTML = `
+        <div style="padding: 15px; background: #f5f5f5; border-radius: 8px; text-align: center;">
+          <i data-feather="file-text" style="width: 48px; height: 48px; color: #d32f2f;"></i>
+          <p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">
+            ✓ ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+          </p>
+        </div>
+      `;
+      feather.replace();
+    }
+  } else {
+    preview.innerHTML = '';
+  }
+};
+
+
+// ===== BUKTI SIMPANAN UPLOAD FUNCTIONS =====
+
+// Trigger file upload for simpanan
+window.triggerFileUploadSimpanan = function() {
+  document.getElementById('buktiSimpanan').click();
+};
+
+// Trigger camera capture for simpanan
+window.triggerCameraCaptureSimpanan = function() {
+  document.getElementById('buktiSimpananCamera').click();
+};
+
+// Handle camera capture for simpanan
+window.handleCameraCaptureSimpanan = function(input) {
+  const file = input.files[0];
+  
+  if (!file) return;
+  
+  // Validate size (5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    alert('File terlalu besar! Maksimal 5MB');
+    input.value = '';
+    return;
+  }
+  
+  // Transfer file to main input
+  const mainInput = document.getElementById('buktiSimpanan');
+  const dataTransfer = new DataTransfer();
+  dataTransfer.items.add(file);
+  mainInput.files = dataTransfer.files;
+  
+  // Trigger preview
+  previewBuktiSimpanan(mainInput);
+  
+  // Clear camera input
+  input.value = '';
+};
+
+// Preview bukti simpanan
+window.previewBuktiSimpanan = function(input) {
+  const file = input.files[0];
+  const preview = document.getElementById('previewBuktiSimpanan');
+  
+  if (!preview) return;
+  
+  if (file) {
+    // Validate size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File terlalu besar! Maksimal 5MB');
+      input.value = '';
+      preview.innerHTML = '';
+      return;
+    }
+    
+    // Validate type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Format file tidak didukung! Gunakan JPG, PNG, GIF, atau PDF');
+      input.value = '';
+      preview.innerHTML = '';
+      return;
+    }
+    
+    // Show preview
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        preview.innerHTML = `
+          <div style="text-align: center; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+            <img src="${e.target.result}" 
+                 style="max-width: 300px; max-height: 200px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">
+              ✓ ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+            </p>
+          </div>
+        `;
+      };
+      reader.readAsDataURL(file);
+    } else if (file.type === 'application/pdf') {
+      preview.innerHTML = `
+        <div style="padding: 15px; background: #f5f5f5; border-radius: 8px; text-align: center;">
+          <i data-feather="file-text" style="width: 48px; height: 48px; color: #d32f2f;"></i>
+          <p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">
+            ✓ ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+          </p>
+        </div>
+      `;
+      feather.replace();
+    }
+  } else {
+    preview.innerHTML = '';
+  }
+};
+
+
+// Trigger file upload for simpanan edit
+window.triggerFileUploadSimpananEdit = function() {
+  document.getElementById('buktiSimpananEdit').click();
+};
+
+// Trigger camera capture for simpanan edit
+window.triggerCameraCaptureSimpananEdit = function() {
+  document.getElementById('buktiSimpananCameraEdit').click();
+};
+
+// Handle camera capture for simpanan edit
+window.handleCameraCaptureSimpananEdit = function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  if (file.size > 5 * 1024 * 1024) {
+    alert('File terlalu besar! Maksimal 5MB');
+    input.value = '';
+    return;
+  }
+  
+  const mainInput = document.getElementById('buktiSimpananEdit');
+  const dataTransfer = new DataTransfer();
+  dataTransfer.items.add(file);
+  mainInput.files = dataTransfer.files;
+  
+  previewBuktiSimpananEdit(mainInput);
+  input.value = '';
+};
+
+// Preview bukti simpanan edit
+window.previewBuktiSimpananEdit = function(input) {
+  const file = input.files[0];
+  const preview = document.getElementById('previewBuktiSimpananEdit');
+  
+  if (!preview) return;
+  
+  if (file) {
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File terlalu besar! Maksimal 5MB');
+      input.value = '';
+      preview.innerHTML = '';
+      return;
+    }
+    
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Format file tidak didukung! Gunakan JPG, PNG, GIF, atau PDF');
+      input.value = '';
+      preview.innerHTML = '';
+      return;
+    }
+    
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        preview.innerHTML = `
+          <div style="text-align: center; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+            <img src="${e.target.result}" 
+                 style="max-width: 300px; max-height: 200px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">
+              ✓ ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+            </p>
+          </div>
+        `;
+      };
+      reader.readAsDataURL(file);
+    } else if (file.type === 'application/pdf') {
+      preview.innerHTML = `
+        <div style="padding: 15px; background: #f5f5f5; border-radius: 8px; text-align: center;">
+          <i data-feather="file-text" style="width: 48px; height: 48px; color: #d32f2f;"></i>
+          <p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">
+            ✓ ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+          </p>
+        </div>
+      `;
+      feather.replace();
+    }
+  } else {
+    preview.innerHTML = '';
+  }
+};
+
+
+// ===== ACTIVITY LOG FUNCTIONS =====
+
+// Load recent activity
+window.loadRecentActivity = async function() {
+  try {
+    const activities = await API.get('/api/activity-log/recent?limit=15');
+    
+    // Debug: Log first activity to check date format
+    if (activities && activities.length > 0) {
+      console.log('Sample activity:', activities[0]);
+      console.log('Created at:', activities[0].created_at);
+      console.log('Parsed date:', new Date(activities[0].created_at));
+      console.log('Current time:', new Date());
+    }
+    
+    const container = document.getElementById('activityLogContainer');
+    
+    if (!activities || activities.length === 0) {
+      container.innerHTML = `
+        <div class="activity-empty">
+          <i data-feather="inbox"></i>
+          <p>Belum ada aktivitas</p>
+        </div>
+      `;
+      feather.replace();
+      return;
+    }
+    
+    container.innerHTML = `
+      <div class="activity-list">
+        ${activities.map(activity => `
+          <div class="activity-item ${getActivityColor(activity.action)}">
+            <div class="activity-icon">
+              <i data-feather="${getActivityIcon(activity.action)}"></i>
+            </div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <strong>${activity.username}</strong>
+                <span class="activity-action">${getActionText(activity.action)}</span>
+                <span class="activity-module">${activity.module}</span>
+              </div>
+              ${activity.description ? `
+                <div class="activity-description">${activity.description}</div>
+              ` : ''}
+              <div class="activity-time" title="${activity.created_at}">
+                <i data-feather="clock"></i>
+                ${formatTimeAgo(activity.created_at)}
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    
+    feather.replace();
+  } catch (error) {
+    console.error('Error loading activity:', error);
+    document.getElementById('activityLogContainer').innerHTML = `
+      <div class="activity-empty">
+        <i data-feather="alert-circle"></i>
+        <p style="color: #d32f2f;">Gagal memuat aktivitas</p>
+      </div>
+    `;
+    feather.replace();
+  }
+};
+
+// Refresh activity
+window.refreshActivity = function() {
+  document.getElementById('activityLogContainer').innerHTML = '<div class="loading">Memuat aktivitas...</div>';
+  window.loadRecentActivity();
+};
+
+// Get activity color class
+function getActivityColor(action) {
+  const colors = {
+    'CREATE': 'activity-create',
+    'UPDATE': 'activity-update',
+    'DELETE': 'activity-delete',
+    'LOGIN': 'activity-login',
+    'LOGOUT': 'activity-logout',
+    'APPROVE': 'activity-approve',
+    'REJECT': 'activity-reject',
+    'VIEW': 'activity-view',
+    'EXPORT': 'activity-export',
+    'PRINT': 'activity-print'
+  };
+  return colors[action] || 'activity-default';
+}
+
+// Get activity icon
+function getActivityIcon(action) {
+  const icons = {
+    'CREATE': 'plus-circle',
+    'UPDATE': 'edit',
+    'DELETE': 'trash-2',
+    'LOGIN': 'log-in',
+    'LOGOUT': 'log-out',
+    'APPROVE': 'check-circle',
+    'REJECT': 'x-circle',
+    'VIEW': 'eye',
+    'EXPORT': 'download',
+    'PRINT': 'printer'
+  };
+  return icons[action] || 'activity';
+}
+
+// Get action text in Indonesian
+function getActionText(action) {
+  const texts = {
+    'CREATE': 'menambahkan',
+    'UPDATE': 'mengupdate',
+    'DELETE': 'menghapus',
+    'LOGIN': 'login ke',
+    'LOGOUT': 'logout dari',
+    'APPROVE': 'menyetujui',
+    'REJECT': 'menolak',
+    'VIEW': 'melihat',
+    'EXPORT': 'mengexport',
+    'PRINT': 'mencetak'
+  };
+  return texts[action] || action.toLowerCase();
+}
+
+// Format time ago with proper timezone handling
+function formatTimeAgo(dateStr) {
+  if (!dateStr) return '-';
+  
+  try {
+    let date;
+    
+    // SQLite CURRENT_TIMESTAMP returns UTC time in format "YYYY-MM-DD HH:MM:SS"
+    // We need to treat it as UTC and convert to local time
+    if (dateStr.includes('T')) {
+      // Already ISO format
+      date = new Date(dateStr);
+    } else {
+      // SQLite format: "YYYY-MM-DD HH:MM:SS"
+      // Add 'Z' to treat as UTC, then convert to local
+      date = new Date(dateStr.replace(' ', 'T') + 'Z');
+    }
+    
+    // Validate date
+    if (isNaN(date.getTime())) {
+      console.error('Invalid date:', dateStr);
+      return formatDate(dateStr);
+    }
+    
+    const now = new Date();
+    const diff = Math.floor((now - date) / 1000); // seconds
+    
+    // Debug log
+    console.log('Time ago debug:', {
+      original: dateStr,
+      parsed: date.toString(),
+      now: now.toString(),
+      diffSeconds: diff,
+      diffMinutes: Math.floor(diff / 60)
+    });
+    
+    // Handle future dates (clock skew) - allow up to 60 seconds
+    if (diff < -60) {
+      console.warn('Future date detected:', dateStr, 'Diff:', diff);
+      return 'Baru saja';
+    }
+    
+    if (diff < 0 || diff < 60) return 'Baru saja';
+    if (diff < 3600) return `${Math.floor(diff / 60)} menit yang lalu`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} jam yang lalu`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)} hari yang lalu`;
+    if (diff < 2592000) return `${Math.floor(diff / 604800)} minggu yang lalu`;
+    
+    // Format tanggal lengkap jika lebih dari 1 bulan
+    return formatDate(dateStr);
+  } catch (error) {
+    console.error('Error formatting time ago:', error, dateStr);
+    return formatDate(dateStr);
+  }
+}
+
+console.log('=== ACTIVITY LOG FUNCTIONS LOADED ===');
+
+
+// ===== PREVIEW IMAGE FUNCTIONS =====
+
+// Preview image for file upload
+window.previewImage = function(input, previewId) {
+  const file = input.files[0];
+  const preview = document.getElementById(previewId);
+  
+  if (!preview) return;
+  
+  if (file) {
+    // Validate size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File terlalu besar! Maksimal 5MB');
+      input.value = '';
+      preview.innerHTML = '';
+      return;
+    }
+    
+    // Validate type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Format file tidak didukung! Gunakan JPG, PNG, GIF, atau PDF');
+      input.value = '';
+      preview.innerHTML = '';
+      return;
+    }
+    
+    // Show preview
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        preview.innerHTML = `
+          <div style="text-align: center;">
+            <img src="${e.target.result}" 
+                 style="max-width: 150px; max-height: 120px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">${file.name} (${(file.size / 1024).toFixed(2)} KB)</p>
+          </div>
+        `;
+      };
+      reader.readAsDataURL(file);
+    } else if (file.type === 'application/pdf') {
+      preview.innerHTML = `
+        <div style="padding: 10px; background: #f0f0f0; border-radius: 4px; text-align: center;">
+          <i data-feather="file-text" style="width: 24px; height: 24px; color: #d32f2f;"></i>
+          <p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">
+            📄 ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+          </p>
+        </div>
+      `;
+      feather.replace();
+    }
+  } else {
+    preview.innerHTML = '';
+  }
+};
+
+// View foto KTP
+window.viewFotoKTP = function(filename) {
+  if (!filename) {
+    alert('Tidak ada foto KTP');
+    return;
+  }
+  
+  const fileUrl = `/uploads/${filename}`;
+  const ext = filename.split('.').pop().toLowerCase();
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal active';
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Foto KTP</h3>
+        <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
+      </div>
+      <div style="padding: 20px; text-align: center;">
+        ${ext === 'pdf' ? `
+          <iframe src="${fileUrl}" 
+                  style="width: 100%; height: 600px; border: none; border-radius: 8px;"></iframe>
+          <br>
+          <a href="${fileUrl}" target="_blank" class="btn btn-primary" style="margin-top: 10px;">
+            <i data-feather="external-link"></i> Buka di Tab Baru
+          </a>
+        ` : `
+          <img src="${fileUrl}" 
+               style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+          <br>
+          <a href="${fileUrl}" download class="btn btn-primary" style="margin-top: 10px;">
+            <i data-feather="download"></i> Download
+          </a>
+        `}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  feather.replace();
+};
+
+console.log('=== PREVIEW IMAGE FUNCTIONS LOADED ===');
+
+
+// ===== VIEW BUKTI PEMBAYARAN FUNCTIONS =====
+
+// View bukti pembayaran
+window.viewBuktiBayar = function(filename) {
+  if (!filename) {
+    alert('Tidak ada bukti pembayaran');
+    return;
+  }
+  
+  const fileUrl = `/uploads/${filename}`;
+  const ext = filename.split('.').pop().toLowerCase();
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal active';
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Bukti Pembayaran</h3>
+        <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
+      </div>
+      <div style="padding: 20px; text-align: center;">
+        ${ext === 'pdf' ? `
+          <iframe src="${fileUrl}" 
+                  style="width: 100%; height: 600px; border: none; border-radius: 8px;"></iframe>
+          <br>
+          <a href="${fileUrl}" target="_blank" class="btn btn-primary" style="margin-top: 10px;">
+            <i data-feather="external-link"></i> Buka di Tab Baru
+          </a>
+        ` : `
+          <img src="${fileUrl}" 
+               style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+          <br>
+          <a href="${fileUrl}" download class="btn btn-primary" style="margin-top: 10px;">
+            <i data-feather="download"></i> Download
+          </a>
+        `}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  feather.replace();
+};
+
+console.log('=== VIEW BUKTI PEMBAYARAN FUNCTIONS LOADED ===');
+
+
+// ===== APPROVAL SIMPANAN PAGE =====
+
+window.renderApprovalSimpanan = async function() {
+  try {
+    const pendingSimpanan = await API.get('/api/simpanan/pending');
+    
+    // Validate that pendingSimpanan is an array
+    if (!Array.isArray(pendingSimpanan)) {
+      throw new Error('Data tidak valid: ' + JSON.stringify(pendingSimpanan));
+    }
+    
+    contentArea.innerHTML = `
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">
+            <i data-feather="check-circle"></i>
+            Persetujuan Pembayaran Simpanan
+          </h3>
+          <div class="badge badge-warning" style="font-size: 14px; padding: 8px 16px;">
+            ${pendingSimpanan.length} Menunggu Persetujuan
+          </div>
+        </div>
+        
+        <div class="card-body">
+          ${pendingSimpanan.length === 0 ? `
+            <div class="empty-state">
+              <i data-feather="check-circle" style="width: 64px; height: 64px; color: #4CAF50;"></i>
+              <h3>Tidak Ada Pembayaran Pending</h3>
+              <p>Semua pembayaran simpanan sudah diproses</p>
+            </div>
+          ` : `
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th>Tanggal</th>
+                    <th>Jenis Simpanan</th>
+                    <th>No. Anggota</th>
+                    <th>Nama Anggota</th>
+                    <th>Jumlah</th>
+                    <th>Metode</th>
+                    <th>Bukti</th>
+                    <th>Status</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${pendingSimpanan.map((item, index) => {
+                    const jenisLabel = {
+                      'pokok': 'Simpanan Pokok',
+                      'wajib': 'Simpanan Wajib',
+                      'khusus': 'Simpanan Khusus',
+                      'sukarela': 'Simpanan Sukarela'
+                    };
+                    
+                    return `
+                      <tr>
+                        <td>${index + 1}</td>
+                        <td>${formatDate(item.tanggal_transaksi)}</td>
+                        <td><strong>${jenisLabel[item.jenis_simpanan]}</strong></td>
+                        <td>${item.nomor_anggota}</td>
+                        <td>${item.nama_lengkap}</td>
+                        <td><strong style="color: #2E7D32;">${formatCurrency(item.jumlah)}</strong></td>
+                        <td>${item.metode_pembayaran || '-'}</td>
+                        <td style="text-align: center;">
+                          ${item.bukti_pembayaran ? `
+                            <button class="btn btn-sm btn-info" onclick="viewBuktiBayar('${item.bukti_pembayaran}')" title="Lihat Bukti">
+                              <i data-feather="image"></i> Lihat
+                            </button>
+                          ` : '<span style="color: #999;">-</span>'}
+                        </td>
+                        <td>
+                          <span class="badge badge-warning">Pending</span>
+                        </td>
+                        <td>
+                          <div class="btn-group">
+                            <button class="btn btn-sm btn-success" onclick="approveSimpanan('${item.jenis_simpanan}', ${item.id})" title="Setujui">
+                              <i data-feather="check"></i> Setujui
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="rejectSimpanan('${item.jenis_simpanan}', ${item.id})" title="Tolak">
+                              <i data-feather="x"></i> Tolak
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          `}
+        </div>
+      </div>
+    `;
+    
+    feather.replace();
+  } catch (error) {
+    console.error('Error loading approval simpanan:', error);
+    contentArea.innerHTML = `
+      <div class="card">
+        <div class="card-body">
+          <div class="empty-state">
+            <i data-feather="alert-circle"></i>
+            <h3>Gagal Memuat Data</h3>
+            <p>${error.message}</p>
+          </div>
+        </div>
+      </div>
+    `;
+    feather.replace();
+  }
+};
+
+// Approve Simpanan
+window.approveSimpanan = async function(jenis, id) {
+  if (!confirm('Apakah Anda yakin ingin menyetujui pembayaran simpanan ini?')) {
+    return;
+  }
+  
+  try {
+    const result = await API.put(`/api/simpanan/approve/${jenis}/${id}`, {});
+    alert('✅ ' + result.message);
+    renderApprovalSimpanan(); // Reload page
+  } catch (error) {
+    alert('❌ Error: ' + error.message);
+  }
+};
+
+// Reject Simpanan
+window.rejectSimpanan = async function(jenis, id) {
+  const alasan = prompt('Masukkan alasan penolakan:');
+  
+  if (!alasan) {
+    alert('Alasan penolakan harus diisi!');
+    return;
+  }
+  
+  if (!confirm('Apakah Anda yakin ingin menolak pembayaran simpanan ini?')) {
+    return;
+  }
+  
+  try {
+    const result = await API.put(`/api/simpanan/reject/${jenis}/${id}`, { alasan });
+    alert('✅ ' + result.message);
+    renderApprovalSimpanan(); // Reload page
+  } catch (error) {
+    alert('❌ Error: ' + error.message);
+  }
+};
+
+console.log('=== APPROVAL SIMPANAN FUNCTIONS LOADED ===');

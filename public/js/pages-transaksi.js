@@ -89,6 +89,7 @@ window.renderSimpanan = async function(jenis) {
               <th>Nama Anggota</th>
               <th>Jumlah</th>
               <th>Metode</th>
+              <th>Bukti</th>
               <th>Keterangan</th>
               <th>Aksi</th>
             </tr>
@@ -102,6 +103,13 @@ window.renderSimpanan = async function(jenis) {
                 <td>${item.nama_lengkap}</td>
                 <td><strong>${formatCurrency(item.jumlah)}</strong></td>
                 <td>${item.metode_pembayaran || '-'}</td>
+                <td style="text-align: center;">
+                  ${item.bukti_pembayaran ? `
+                    <button class="btn btn-sm btn-info" onclick="viewBuktiBayar('${item.bukti_pembayaran}')" title="Lihat Bukti">
+                      <i data-feather="image"></i>
+                    </button>
+                  ` : '<span style="color: #999; font-size: 12px;">-</span>'}
+                </td>
                 <td>${item.keterangan || '-'}</td>
                 <td>
                   <div class="btn-group">
@@ -334,6 +342,20 @@ window.editSimpanan = async function(id, jenis) {
           <textarea name="keterangan">${item.keterangan || ''}</textarea>
         </div>
         
+        <div class="form-group">
+          <label>Bukti Pembayaran</label>
+          ${item.bukti_pembayaran ? `
+            <div style="margin-bottom: 10px;">
+              <button type="button" class="btn btn-sm btn-info" onclick="viewBuktiBayar('${item.bukti_pembayaran}')">
+                <i data-feather="image"></i> Lihat Bukti Saat Ini
+              </button>
+            </div>
+          ` : ''}
+          <input type="file" name="bukti_pembayaran" accept="image/*,.pdf" onchange="previewImage(this, 'previewBuktiEdit')">
+          <small style="color: #666; font-size: 12px;">Format: JPG, PNG, PDF. Max 5MB. Kosongkan jika tidak ingin mengubah.</small>
+          <div id="previewBuktiEdit" style="margin-top: 10px;"></div>
+        </div>
+        
         <div class="btn-group">
           <button type="submit" class="btn btn-primary">
             <i data-feather="save"></i> Simpan
@@ -352,16 +374,15 @@ window.editSimpanan = async function(id, jenis) {
   document.getElementById('editSimpananForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const data = Object.fromEntries(formData);
     
     try {
       const response = await fetch(`/api/simpanan/${jenis}/${id}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${token}`
+          // Don't set Content-Type, let browser set it for multipart/form-data
         },
-        body: JSON.stringify(data)
+        body: formData // Send FormData directly for file upload
       });
       
       const result = await response.json();

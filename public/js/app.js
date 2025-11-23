@@ -332,37 +332,56 @@ function formatDate(dateString) {
 // Load Pending Count for Notification Badge
 async function loadPendingCount() {
   try {
-    const response = await fetch('/api/anggota/pending/count', {
+    // Load pending anggota count
+    const anggotaResponse = await fetch('/api/anggota/pending/count', {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
     });
+    const anggotaData = await anggotaResponse.json();
     
-    const data = await response.json();
+    // Load pending simpanan count
+    const simpananResponse = await fetch('/api/simpanan/pending/count', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+    const simpananData = await simpananResponse.json();
+    
     const badge = document.getElementById('notificationBadge');
     const menuBadge = document.getElementById('menuBadge');
+    const simpananBadge = document.getElementById('simpananBadge');
     
-    if (data.count > 0) {
-      // Update notification badge in header
+    // Update anggota badge
+    if (anggotaData.count > 0) {
       if (badge) {
-        badge.textContent = data.count;
+        badge.textContent = anggotaData.count;
         badge.style.display = 'block';
         badge.classList.add('pulse');
       }
-      
-      // Update menu badge in sidebar
       if (menuBadge) {
-        menuBadge.textContent = data.count;
+        menuBadge.textContent = anggotaData.count;
         menuBadge.style.display = 'inline-block';
       }
     } else {
-      // Hide badges when count is 0
       if (badge) {
         badge.style.display = 'none';
         badge.classList.remove('pulse');
       }
       if (menuBadge) {
         menuBadge.style.display = 'none';
+      }
+    }
+    
+    // Update simpanan badge
+    if (simpananData.count > 0) {
+      if (simpananBadge) {
+        simpananBadge.textContent = simpananData.count;
+        simpananBadge.style.display = 'inline-block';
+      }
+    } else {
+      if (simpananBadge) {
+        simpananBadge.style.display = 'none';
       }
     }
   } catch (error) {

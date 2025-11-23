@@ -26,10 +26,16 @@ router.get('/:id', (req, res) => {
   });
 });
 
-// Create anggota
-router.post('/', upload.single('foto'), async (req, res) => {
+// Create anggota with foto and foto_ktp
+router.post('/', upload.fields([
+  { name: 'foto', maxCount: 1 },
+  { name: 'foto_ktp', maxCount: 1 }
+]), async (req, res) => {
   const { nomor_anggota, nama_lengkap, nik, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat, nomor_telpon, email, pekerjaan, tanggal_bergabung, username, password } = req.body;
-  const foto = req.file ? req.file.filename : null;
+  
+  // Get uploaded files
+  const foto = req.files && req.files['foto'] ? req.files['foto'][0].filename : null;
+  const foto_ktp = req.files && req.files['foto_ktp'] ? req.files['foto_ktp'][0].filename : null;
 
   // Hash password if provided
   let hashedPassword = null;
@@ -37,21 +43,32 @@ router.post('/', upload.single('foto'), async (req, res) => {
     hashedPassword = await bcrypt.hash(password, 10);
   }
 
-  db.run(`INSERT INTO anggota (nomor_anggota, nama_lengkap, nik, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat, nomor_telpon, email, pekerjaan, foto, tanggal_bergabung, username, password) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [nomor_anggota, nama_lengkap, nik, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat, nomor_telpon, email, pekerjaan, foto, tanggal_bergabung, username, hashedPassword],
+  db.run(`INSERT INTO anggota (nomor_anggota, nama_lengkap, nik, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat, nomor_telpon, email, pekerjaan, foto, foto_ktp, tanggal_bergabung, username, password) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [nomor_anggota, nama_lengkap, nik, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat, nomor_telpon, email, pekerjaan, foto, foto_ktp, tanggal_bergabung, username, hashedPassword],
     function(err) {
       if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: 'Anggota berhasil ditambahkan', id: this.lastID });
+      res.json({ 
+        message: 'Anggota berhasil ditambahkan', 
+        id: this.lastID,
+        foto: foto,
+        foto_ktp: foto_ktp
+      });
     }
   );
 });
 
-// Update anggota
-router.put('/:id', upload.single('foto'), async (req, res) => {
+// Update anggota with foto and foto_ktp
+router.put('/:id', upload.fields([
+  { name: 'foto', maxCount: 1 },
+  { name: 'foto_ktp', maxCount: 1 }
+]), async (req, res) => {
   const { id } = req.params;
   const { nomor_anggota, nama_lengkap, nik, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat, nomor_telpon, email, pekerjaan, tanggal_bergabung, status, username, password } = req.body;
-  const foto = req.file ? req.file.filename : null;
+  
+  // Get uploaded files
+  const foto = req.files && req.files['foto'] ? req.files['foto'][0].filename : null;
+  const foto_ktp = req.files && req.files['foto_ktp'] ? req.files['foto_ktp'][0].filename : null;
 
   let query = `UPDATE anggota SET nomor_anggota = ?, nama_lengkap = ?, nik = ?, tempat_lahir = ?, tanggal_lahir = ?, jenis_kelamin = ?, alamat = ?, nomor_telpon = ?, email = ?, pekerjaan = ?, tanggal_bergabung = ?, status = ?`;
   let params = [nomor_anggota, nama_lengkap, nik, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat, nomor_telpon, email, pekerjaan, tanggal_bergabung, status];
@@ -59,6 +76,11 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
   if (foto) {
     query += ', foto = ?';
     params.push(foto);
+  }
+
+  if (foto_ktp) {
+    query += ', foto_ktp = ?';
+    params.push(foto_ktp);
   }
 
   if (username) {
@@ -78,7 +100,11 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
 
   db.run(query, params, function(err) {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: 'Anggota berhasil diupdate' });
+    res.json({ 
+      message: 'Anggota berhasil diupdate',
+      foto: foto,
+      foto_ktp: foto_ktp
+    });
   });
 });
 
