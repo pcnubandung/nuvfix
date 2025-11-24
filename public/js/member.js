@@ -332,13 +332,16 @@ async function renderDashboard() {
         ${pengumumanAktif.map((item, index) => {
           const showOverlay = item.tampilkan_judul || item.tampilkan_konten;
           return `
-          <div class="banner-slide ${index === 0 ? 'active' : ''}" style="background-image: url('/uploads/${item.gambar}');">
-            ${showOverlay ? `
-            <div class="banner-overlay">
-              ${item.tampilkan_judul && item.judul ? `<h3>${item.judul}</h3>` : ''}
-              ${item.tampilkan_konten && item.konten ? `<p>${item.konten}</p>` : ''}
+          <div class="banner-slide ${index === 0 ? 'active' : ''}">
+            <div style="position: relative; display: inline-block; width: 100%;">
+              <img src="/uploads/${item.gambar}" alt="${item.judul || 'Pengumuman'}" class="banner-image">
+              ${showOverlay ? `
+              <div class="banner-overlay">
+                ${item.tampilkan_judul && item.judul ? `<h3>${item.judul}</h3>` : ''}
+                ${item.tampilkan_konten && item.konten ? `<p>${item.konten}</p>` : ''}
+              </div>
+              ` : ''}
             </div>
-            ` : ''}
           </div>
           `;
         }).join('')}
