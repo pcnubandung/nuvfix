@@ -170,12 +170,22 @@
               <div class="form-row">
                 <div class="form-group">
                   <label for="foto_ktp">Foto KTP *</label>
-                  <input type="file" id="foto_ktp" name="foto_ktp" accept="image/*" required>
+                  <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                    <input type="file" id="foto_ktp" name="foto_ktp" accept="image/*" required style="flex: 1;">
+                    <button type="button" class="btn-camera" onclick="openCameraRegister('foto_ktp', 'preview_ktp')">
+                      <i data-feather="camera"></i> Kamera
+                    </button>
+                  </div>
                   <small>Upload foto/scan KTP yang jelas</small>
                 </div>
                 <div class="form-group">
                   <label for="pas_foto">Pas Foto *</label>
-                  <input type="file" id="pas_foto" name="pas_foto" accept="image/*" required>
+                  <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                    <input type="file" id="pas_foto" name="pas_foto" accept="image/*" required style="flex: 1;">
+                    <button type="button" class="btn-camera" onclick="openCameraRegister('pas_foto', 'preview_foto')">
+                      <i data-feather="camera"></i> Kamera
+                    </button>
+                  </div>
                   <small>Upload pas foto ukuran 3x4 atau 4x6</small>
                 </div>
               </div>

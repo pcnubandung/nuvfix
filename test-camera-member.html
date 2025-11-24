@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Camera Member - Koperasi NU Vibes</title>
+  <link rel="stylesheet" href="public/css/style.css">
+  <link rel="stylesheet" href="public/css/member.css">
+  <script src="https://unpkg.com/feather-icons"></script>
+  <style>
+    body {
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #2E7D32;
+      margin-bottom: 20px;
+    }
+    .test-section {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f9f9f9;
+      border-radius: 8px;
+    }
+    .test-section h3 {
+      color: #333;
+      margin-bottom: 15px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #555;
+    }
+    input[type="file"] {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      width: 100%;
+    }
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #2E7D32;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #1b5e20;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+    }
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+    .btn-secondary:hover {
+      background: #5a6268;
+    }
+    .preview-box {
+      margin-top: 15px;
+      min-height: 50px;
+    }
+    .info-box {
+      background: #e3f2fd;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #2196f3;
+      margin-bottom: 20px;
+    }
+    .info-box h4 {
+      margin: 0 0 10px 0;
+      color: #1976d2;
+    }
+    .info-box ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .info-box li {
+      margin-bottom: 5px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <h1><i data-feather="camera"></i> Test Camera Member Portal</h1>
+    
+    <div class="info-box">
+      <h4><i data-feather="info"></i> Informasi Testing</h4>
+      <ul>
+        <li>Pastikan browser mengizinkan akses kamera</li>
+        <li>Gunakan HTTPS atau localhost untuk testing</li>
+        <li>Klik tombol "Kamera" untuk membuka modal kamera</li>
+        <li>Foto akan otomatis di-preview setelah capture</li>
+      </ul>
+    </div>
+    
+    <div class="test-section">
+      <h3>Test 1: Upload Foto Profil</h3>
+      <div class="form-group">
+        <label>Foto Profil</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="file" id="inputFotoTest1" accept="image/*" onchange="previewImageMember(this, 'previewFotoTest1')" style="flex: 1;">
+          <button type="button" class="btn btn-secondary" onclick="openCameraMember('inputFotoTest1', 'previewFotoTest1')">
+            <i data-feather="camera"></i> Kamera
+          </button>
+        </div>
+        <div id="previewFotoTest1" class="preview-box"></div>
+      </div>
+    </div>
+    
+    <div class="test-section">
+      <h3>Test 2: Upload Foto KTP</h3>
+      <div class="form-group">
+        <label>Foto KTP</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="file" id="inputKTPTest2" accept="image/*,.pdf" onchange="previewImageMember(this, 'previewKTPTest2')" style="flex: 1;">
+          <button type="button" class="btn btn-secondary" onclick="openCameraMember('inputKTPTest2', 'previewKTPTest2')">
+            <i data-feather="camera"></i> Kamera
+          </button>
+        </div>
+        <small style="color: #666; font-size: 12px;">Format: JPG, PNG, PDF. Max 5MB</small>
+        <div id="previewKTPTest2" class="preview-box"></div>
+      </div>
+    </div>
+    
+    <div class="test-section">
+      <h3>Test 3: Multiple Upload</h3>
+      <div class="form-group">
+        <label>Foto 1</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="file" id="inputTest3A" accept="image/*" onchange="previewImageMember(this, 'previewTest3A')" style="flex: 1;">
+          <button type="button" class="btn btn-secondary" onclick="openCameraMember('inputTest3A', 'previewTest3A')">
+            <i data-feather="camera"></i> Kamera
+          </button>
+        </div>
+        <div id="previewTest3A" class="preview-box"></div>
+      </div>
+      
+      <div class="form-group">
+        <label>Foto 2</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="file" id="inputTest3B" accept="image/*" onchange="previewImageMember(this, 'previewTest3B')" style="flex: 1;">
+          <button type="button" class="btn btn-secondary" onclick="openCameraMember('inputTest3B', 'previewTest3B')">
+            <i data-feather="camera"></i> Kamera
+          </button>
+        </div>
+        <div id="previewTest3B" class="preview-box"></div>
+      </div>
+    </div>
+    
+    <div style="text-align: center; padding: 20px; background: #e8f5e9; border-radius: 8px;">
+      <p style="margin: 0; color: #2e7d32; font-weight: 600;">
+        <i data-feather="check-circle"></i> Fitur kamera siap digunakan!
+      </p>
+      <p style="margin: 10px 0 0 0; color: #666; font-size: 14px;">
+        Buka di mobile device untuk test switch kamera depan/belakang
+      </p>
+    </div>
+  </div>
+  
+  <!-- Load member.js for camera functions -->
+  <script src="public/js/member.js"></script>
+  <script>
+    // Override authentication check for testing
+    const token = 'test-token';
+    const user = { role: 'Member' };
+    
+    // Initialize feather icons
+    feather.replace();
+    
+    console.log('Camera test page loaded');
+    console.log('Camera functions available:', {
+      openCameraMember: typeof openCameraMember,
+      previewImageMember: typeof previewImageMember,
+      capturePhotoMember: typeof capturePhotoMember,
+      closeCameraMember: typeof closeCameraMember
+    });
+  </script>
+</body>
+</html>

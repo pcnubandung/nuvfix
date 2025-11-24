@@ -743,3 +743,169 @@ input[type="file"]:focus {
     padding: 10px;
   }
 }
+
+
+/* ===== CAMERA BUTTON STYLES ===== */
+
+.btn-camera {
+  padding: 10px 16px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-camera i {
+  width: 16px;
+  height: 16px;
+}
+
+.btn-camera:hover {
+  background: #5a6268;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.btn-camera:active {
+  transform: translateY(0);
+}
+
+/* Camera Modal Styles */
+#cameraModalRegister .modal-content {
+  animation: slideUpRegister 0.3s ease-out;
+}
+
+@keyframes slideUpRegister {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#cameraVideoRegister {
+  background: #000;
+  object-fit: cover;
+}
+
+#cameraErrorRegister {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#cameraErrorRegister i {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Button styles for camera modal */
+.btn-primary {
+  padding: 12px 24px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+}
+
+.btn-secondary {
+  padding: 12px 24px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background: #5a6268;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.btn-danger {
+  padding: 12px 24px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-danger:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+/* Responsive camera modal */
+@media (max-width: 768px) {
+  #cameraModalRegister .modal-content {
+    max-width: 95% !important;
+    margin: 10px;
+  }
+  
+  #cameraVideoRegister {
+    max-height: 300px !important;
+  }
+  
+  .btn-camera {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+}
+
+/* Image preview enhancement */
+.image-preview {
+  position: relative;
+}
+
+.image-preview.has-image {
+  border: 2px solid var(--primary-color);
+  border-radius: 8px;
+  overflow: hidden;
+}

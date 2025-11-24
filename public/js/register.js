@@ -241,3 +241,205 @@ document.addEventListener('DOMContentLoaded', () => {
 setInterval(() => {
   feather.replace();
 }, 1000);
+
+
+// ===== CAMERA FUNCTIONS FOR REGISTER =====
+
+let currentCameraStreamRegister = null;
+let currentCameraInputIdRegister = null;
+let currentCameraPreviewIdRegister = null;
+
+// Open camera for register
+window.openCameraRegister = function(inputId, previewId) {
+  currentCameraInputIdRegister = inputId;
+  currentCameraPreviewIdRegister = previewId;
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal active';
+  modal.id = 'cameraModalRegister';
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width: 700px;">
+      <div class="modal-header">
+        <h2>Ambil Foto dengan Kamera</h2>
+        <button class="modal-close" onclick="closeCameraRegister()">×</button>
+      </div>
+      <div style="padding: 20px;">
+        <div style="position: relative; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 16px;">
+          <video id="cameraVideoRegister" autoplay playsinline style="width: 100%; height: auto; display: block; max-height: 400px;"></video>
+          <canvas id="cameraCanvasRegister" style="display: none;"></canvas>
+        </div>
+        
+        <div id="cameraErrorRegister" style="display: none; padding: 12px; background: #ffebee; color: #c62828; border-radius: 8px; margin-bottom: 16px;">
+          <i data-feather="alert-circle"></i>
+          <span id="cameraErrorTextRegister"></span>
+        </div>
+        
+        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+          <button type="button" class="btn-primary" onclick="capturePhotoRegister()" id="btnCaptureRegister">
+            <i data-feather="camera"></i> Ambil Foto
+          </button>
+          <button type="button" class="btn-secondary" onclick="switchCameraRegister()" id="btnSwitchRegister">
+            <i data-feather="refresh-cw"></i> Ganti Kamera
+          </button>
+          <button type="button" class="btn-danger" onclick="closeCameraRegister()">
+            <i data-feather="x"></i> Batal
+          </button>
+        </div>
+        
+        <p style="text-align: center; color: #666; font-size: 12px; margin-top: 12px;">
+          <i data-feather="info"></i> Pastikan pencahayaan cukup dan foto terlihat jelas
+        </p>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  feather.replace();
+  
+  // Start camera
+  startCameraRegister();
+};
+
+// Start camera
+let currentFacingModeRegister = 'user'; // 'user' for front camera, 'environment' for back camera
+
+async function startCameraRegister() {
+  try {
+    // Stop existing stream if any
+    if (currentCameraStreamRegister) {
+      currentCameraStreamRegister.getTracks().forEach(track => track.stop());
+    }
+    
+    const constraints = {
+      video: {
+        facingMode: currentFacingModeRegister,
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    };
+    
+    currentCameraStreamRegister = await navigator.mediaDevices.getUserMedia(constraints);
+    const video = document.getElementById('cameraVideoRegister');
+    
+    if (video) {
+      video.srcObject = currentCameraStreamRegister;
+      
+      // Hide error message
+      const errorDiv = document.getElementById('cameraErrorRegister');
+      if (errorDiv) errorDiv.style.display = 'none';
+    }
+  } catch (error) {
+    console.error('Error accessing camera:', error);
+    
+    const errorDiv = document.getElementById('cameraErrorRegister');
+    const errorText = document.getElementById('cameraErrorTextRegister');
+    
+    if (errorDiv && errorText) {
+      errorDiv.style.display = 'flex';
+      errorDiv.style.alignItems = 'center';
+      errorDiv.style.gap = '8px';
+      
+      if (error.name === 'NotAllowedError') {
+        errorText.textContent = 'Akses kamera ditolak. Silakan izinkan akses kamera di pengaturan browser.';
+      } else if (error.name === 'NotFoundError') {
+        errorText.textContent = 'Kamera tidak ditemukan. Pastikan perangkat memiliki kamera.';
+      } else {
+        errorText.textContent = 'Gagal mengakses kamera: ' + error.message;
+      }
+      
+      feather.replace();
+    }
+  }
+}
+
+// Switch camera (front/back)
+window.switchCameraRegister = async function() {
+  currentFacingModeRegister = currentFacingModeRegister === 'user' ? 'environment' : 'user';
+  await startCameraRegister();
+};
+
+// Capture photo
+window.capturePhotoRegister = function() {
+  const video = document.getElementById('cameraVideoRegister');
+  const canvas = document.getElementById('cameraCanvasRegister');
+  
+  if (!video || !canvas) return;
+  
+  // Set canvas size to video size
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  
+  // Draw video frame to canvas
+  const context = canvas.getContext('2d');
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  
+  // Convert canvas to blob
+  canvas.toBlob(function(blob) {
+    if (!blob) {
+      alert('Gagal mengambil foto. Silakan coba lagi.');
+      return;
+    }
+    
+    // Create file from blob
+    const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
+    
+    // Create FileList-like object
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    
+    // Set to input file
+    const input = document.getElementById(currentCameraInputIdRegister);
+    if (input) {
+      input.files = dataTransfer.files;
+      
+      // Trigger preview manually
+      const preview = document.getElementById(currentCameraPreviewIdRegister);
+      if (preview) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+          preview.classList.add('has-image');
+          
+          // Add success message
+          setTimeout(() => {
+            const successMsg = document.createElement('p');
+            successMsg.style.cssText = 'color: #2e7d32; font-size: 12px; margin-top: 8px; text-align: center; position: absolute; bottom: 10px; left: 0; right: 0; background: rgba(255,255,255,0.9); padding: 5px; border-radius: 4px;';
+            successMsg.innerHTML = '<i data-feather="check-circle" style="width: 14px; height: 14px;"></i> Foto berhasil diambil';
+            preview.style.position = 'relative';
+            preview.appendChild(successMsg);
+            feather.replace();
+            
+            setTimeout(() => successMsg.remove(), 3000);
+          }, 100);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+    
+    // Close camera modal
+    closeCameraRegister();
+  }, 'image/jpeg', 0.9);
+};
+
+// Close camera
+window.closeCameraRegister = function() {
+  // Stop camera stream
+  if (currentCameraStreamRegister) {
+    currentCameraStreamRegister.getTracks().forEach(track => track.stop());
+    currentCameraStreamRegister = null;
+  }
+  
+  // Remove modal
+  const modal = document.getElementById('cameraModalRegister');
+  if (modal) {
+    modal.remove();
+  }
+  
+  // Reset variables
+  currentCameraInputIdRegister = null;
+  currentCameraPreviewIdRegister = null;
+  currentFacingModeRegister = 'user';
+};
+
+console.log('=== CAMERA FUNCTIONS FOR REGISTER LOADED ===');

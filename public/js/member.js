@@ -594,6 +594,16 @@ async function renderProfil() {
               </span>
             </div>
           </div>
+          <div class="profile-field">
+            <label>Foto KTP</label>
+            <div class="value">
+              ${memberData.foto_ktp ? `
+                <button class="btn btn-sm btn-info" onclick="viewFotoKTPMember('${memberData.foto_ktp}')" style="padding: 6px 12px; font-size: 12px;">
+                  <i data-feather="image"></i> Lihat KTP
+                </button>
+              ` : '<span style="color: #999;">Belum upload</span>'}
+            </div>
+          </div>
         </div>
       </div>
       
@@ -677,8 +687,33 @@ window.editProfil = function() {
         
         <div class="form-group">
           <label>Foto Profil</label>
-          <input type="file" name="foto" accept="image/*">
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <input type="file" id="inputFotoMember" name="foto" accept="image/*" onchange="previewImageMember(this, 'previewFotoMember')" style="flex: 1;">
+            <button type="button" class="btn btn-sm btn-secondary" onclick="openCameraMember('inputFotoMember', 'previewFotoMember')" style="white-space: nowrap;">
+              <i data-feather="camera"></i> Kamera
+            </button>
+          </div>
           ${memberData.foto ? `<small style="color: #666;">Foto saat ini: ${memberData.foto}</small>` : ''}
+          <div id="previewFotoMember" style="margin-top: 10px;"></div>
+        </div>
+        
+        <div class="form-group">
+          <label>Foto KTP</label>
+          ${memberData.foto_ktp ? `
+            <div style="margin-bottom: 10px;">
+              <button type="button" class="btn btn-sm btn-info" onclick="viewFotoKTPMember('${memberData.foto_ktp}')">
+                <i data-feather="image"></i> Lihat KTP Saat Ini
+              </button>
+            </div>
+          ` : ''}
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <input type="file" id="inputKTPMember" name="foto_ktp" accept="image/*,.pdf" onchange="previewImageMember(this, 'previewKTPMember')" style="flex: 1;">
+            <button type="button" class="btn btn-sm btn-secondary" onclick="openCameraMember('inputKTPMember', 'previewKTPMember')" style="white-space: nowrap;">
+              <i data-feather="camera"></i> Kamera
+            </button>
+          </div>
+          <small style="color: #666; font-size: 12px;">Format: JPG, PNG, PDF. Max 5MB. Kosongkan jika tidak ingin mengubah.</small>
+          <div id="previewKTPMember" style="margin-top: 10px;"></div>
         </div>
         
         <div class="btn-group">
@@ -1858,6 +1893,51 @@ window.renderBayarSimpanan = async function() {
           </div>
         </div>
         
+        <!-- Payment Note Box -->
+        <div style="background: linear-gradient(135deg, #E8F5E9, #C8E6C9); padding: 25px; border-radius: 12px; margin-bottom: 25px; border: 2px solid #4CAF50; box-shadow: 0 2px 8px rgba(76, 175, 80, 0.1);">
+          <div style="display: flex; align-items: start; gap: 15px; margin-bottom: 20px;">
+            <div style="background: #4CAF50; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i data-feather="dollar-sign" style="color: white; width: 24px; height: 24px;"></i>
+            </div>
+            <div>
+              <h3 style="margin: 0 0 5px 0; color: #2E7D32; font-size: 18px; font-weight: 600;">Catatan:</h3>
+            </div>
+          </div>
+          
+          <div style="background: rgba(255, 255, 255, 0.7); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+            <p style="margin: 0 0 8px 0; color: #2E7D32; font-size: 15px; font-weight: 600;">
+              <i data-feather="check-circle" style="width: 16px; height: 16px; color: #4CAF50;"></i>
+              Simpanan Pokok: <strong style="color: #1B5E20;">Rp. 100.000</strong>
+            </p>
+            <p style="margin: 0; color: #2E7D32; font-size: 15px; font-weight: 600;">
+              <i data-feather="check-circle" style="width: 16px; height: 16px; color: #4CAF50;"></i>
+              Simpanan Wajib: <strong style="color: #1B5E20;">Rp. 30.000/bulan</strong>
+            </p>
+          </div>
+          
+          <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #4CAF50;">
+            <h4 style="margin: 0 0 15px 0; color: #2E7D32; font-size: 16px; font-weight: 600;">
+              Transfer pembayaran Anda melalui:
+            </h4>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="background: linear-gradient(135deg, #F1F8E9, #DCEDC8); padding: 15px; border-radius: 8px; border-left: 4px solid #689F38;">
+                <p style="margin: 0 0 5px 0; color: #666; font-size: 13px; font-weight: 500;">Bank Koperasi NU Vibes</p>
+                <p style="margin: 0; color: #2E7D32; font-size: 16px; font-weight: 700;">
+                  BJB Syariah: <span style="color: #1B5E20; letter-spacing: 1px;">5430102667788</span>
+                </p>
+              </div>
+              
+              <div style="background: linear-gradient(135deg, #F1F8E9, #DCEDC8); padding: 15px; border-radius: 8px; border-left: 4px solid #689F38;">
+                <p style="margin: 0 0 5px 0; color: #666; font-size: 13px; font-weight: 500;">Bank Mandiri</p>
+                <p style="margin: 0; color: #2E7D32; font-size: 16px; font-weight: 700;">
+                  Mandiri: <span style="color: #1B5E20; letter-spacing: 1px;">1300028466996</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <!-- Form Bayar Simpanan -->
         <form id="bayarSimpananForm" style="max-width: 700px;">
           <div class="form-group">
@@ -2125,3 +2205,299 @@ window.handleCameraCapture = function(input) {
 };
 
 console.log('=== BAYAR SIMPANAN MEMBER LOADED ===');
+
+
+// ===== MEMBER FOTO KTP FUNCTIONS =====
+
+// Preview image for member
+window.previewImageMember = function(input, previewId) {
+  const file = input.files[0];
+  const preview = document.getElementById(previewId);
+  
+  if (!preview) return;
+  
+  if (file) {
+    // Validate size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File terlalu besar! Maksimal 5MB');
+      input.value = '';
+      preview.innerHTML = '';
+      return;
+    }
+    
+    // Validate type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Format file tidak didukung! Gunakan JPG, PNG, GIF, atau PDF');
+      input.value = '';
+      preview.innerHTML = '';
+      return;
+    }
+    
+    // Show preview
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        preview.innerHTML = `
+          <div style="text-align: center; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+            <img src="${e.target.result}" 
+                 style="max-width: 200px; max-height: 150px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <p style="margin: 10px 0 0 0; font-size: 12px; color: #666;">
+              ✓ ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+            </p>
+          </div>
+        `;
+      };
+      reader.readAsDataURL(file);
+    } else if (file.type === 'application/pdf') {
+      preview.innerHTML = `
+        <div style="padding: 15px; background: #f5f5f5; border-radius: 8px; text-align: center;">
+          <i data-feather="file-text" style="width: 48px; height: 48px; color: #d32f2f;"></i>
+          <p style="margin: 10px 0 0 0; font-size: 12px; color: #666;">
+            ✓ ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+          </p>
+        </div>
+      `;
+      feather.replace();
+    }
+  } else {
+    preview.innerHTML = '';
+  }
+};
+
+// View foto KTP member
+window.viewFotoKTPMember = function(filename) {
+  if (!filename) {
+    alert('Tidak ada foto KTP');
+    return;
+  }
+  
+  const fileUrl = `/uploads/${filename}`;
+  const ext = filename.split('.').pop().toLowerCase();
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal active';
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Foto KTP Saya</h3>
+        <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
+      </div>
+      <div style="padding: 20px; text-align: center;">
+        ${ext === 'pdf' ? `
+          <iframe src="${fileUrl}" 
+                  style="width: 100%; height: 600px; border: none; border-radius: 8px;"></iframe>
+          <br>
+          <a href="${fileUrl}" target="_blank" class="btn btn-primary" style="margin-top: 10px;">
+            <i data-feather="external-link"></i> Buka di Tab Baru
+          </a>
+        ` : `
+          <img src="${fileUrl}" 
+               style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+          <br>
+          <a href="${fileUrl}" download class="btn btn-primary" style="margin-top: 10px;">
+            <i data-feather="download"></i> Download
+          </a>
+        `}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  feather.replace();
+};
+
+console.log('=== MEMBER FOTO KTP FUNCTIONS LOADED ===');
+
+
+// ===== CAMERA FUNCTIONS FOR MEMBER =====
+
+let currentCameraStream = null;
+let currentCameraInputId = null;
+let currentCameraPreviewId = null;
+
+// Open camera for member
+window.openCameraMember = function(inputId, previewId) {
+  currentCameraInputId = inputId;
+  currentCameraPreviewId = previewId;
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal active';
+  modal.id = 'cameraModalMember';
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width: 700px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Ambil Foto dengan Kamera</h3>
+        <button class="modal-close" onclick="closeCameraMember()">×</button>
+      </div>
+      <div style="padding: 20px;">
+        <div style="position: relative; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 16px;">
+          <video id="cameraVideoMember" autoplay playsinline style="width: 100%; height: auto; display: block; max-height: 400px;"></video>
+          <canvas id="cameraCanvasMember" style="display: none;"></canvas>
+        </div>
+        
+        <div id="cameraErrorMember" style="display: none; padding: 12px; background: #ffebee; color: #c62828; border-radius: 8px; margin-bottom: 16px;">
+          <i data-feather="alert-circle"></i>
+          <span id="cameraErrorTextMember"></span>
+        </div>
+        
+        <div style="display: flex; gap: 12px; justify-content: center;">
+          <button type="button" class="btn btn-primary" onclick="capturePhotoMember()" id="btnCaptureMember">
+            <i data-feather="camera"></i> Ambil Foto
+          </button>
+          <button type="button" class="btn btn-secondary" onclick="switchCameraMember()" id="btnSwitchMember">
+            <i data-feather="refresh-cw"></i> Ganti Kamera
+          </button>
+          <button type="button" class="btn btn-danger" onclick="closeCameraMember()">
+            <i data-feather="x"></i> Batal
+          </button>
+        </div>
+        
+        <p style="text-align: center; color: #666; font-size: 12px; margin-top: 12px;">
+          <i data-feather="info"></i> Pastikan pencahayaan cukup dan foto terlihat jelas
+        </p>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  feather.replace();
+  
+  // Start camera
+  startCameraMember();
+};
+
+// Start camera
+let currentFacingMode = 'user'; // 'user' for front camera, 'environment' for back camera
+
+async function startCameraMember() {
+  try {
+    // Stop existing stream if any
+    if (currentCameraStream) {
+      currentCameraStream.getTracks().forEach(track => track.stop());
+    }
+    
+    const constraints = {
+      video: {
+        facingMode: currentFacingMode,
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    };
+    
+    currentCameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+    const video = document.getElementById('cameraVideoMember');
+    
+    if (video) {
+      video.srcObject = currentCameraStream;
+      
+      // Hide error message
+      const errorDiv = document.getElementById('cameraErrorMember');
+      if (errorDiv) errorDiv.style.display = 'none';
+    }
+  } catch (error) {
+    console.error('Error accessing camera:', error);
+    
+    const errorDiv = document.getElementById('cameraErrorMember');
+    const errorText = document.getElementById('cameraErrorTextMember');
+    
+    if (errorDiv && errorText) {
+      errorDiv.style.display = 'block';
+      
+      if (error.name === 'NotAllowedError') {
+        errorText.textContent = 'Akses kamera ditolak. Silakan izinkan akses kamera di pengaturan browser.';
+      } else if (error.name === 'NotFoundError') {
+        errorText.textContent = 'Kamera tidak ditemukan. Pastikan perangkat memiliki kamera.';
+      } else {
+        errorText.textContent = 'Gagal mengakses kamera: ' + error.message;
+      }
+      
+      feather.replace();
+    }
+  }
+}
+
+// Switch camera (front/back)
+window.switchCameraMember = async function() {
+  currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+  await startCameraMember();
+};
+
+// Capture photo
+window.capturePhotoMember = function() {
+  const video = document.getElementById('cameraVideoMember');
+  const canvas = document.getElementById('cameraCanvasMember');
+  
+  if (!video || !canvas) return;
+  
+  // Set canvas size to video size
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  
+  // Draw video frame to canvas
+  const context = canvas.getContext('2d');
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  
+  // Convert canvas to blob
+  canvas.toBlob(function(blob) {
+    if (!blob) {
+      alert('Gagal mengambil foto. Silakan coba lagi.');
+      return;
+    }
+    
+    // Create file from blob
+    const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
+    
+    // Create FileList-like object
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    
+    // Set to input file
+    const input = document.getElementById(currentCameraInputId);
+    if (input) {
+      input.files = dataTransfer.files;
+      
+      // Trigger preview
+      previewImageMember(input, currentCameraPreviewId);
+    }
+    
+    // Close camera modal
+    closeCameraMember();
+    
+    // Show success message
+    const preview = document.getElementById(currentCameraPreviewId);
+    if (preview) {
+      setTimeout(() => {
+        const successMsg = document.createElement('p');
+        successMsg.style.cssText = 'color: #2e7d32; font-size: 12px; margin-top: 8px; text-align: center;';
+        successMsg.innerHTML = '<i data-feather="check-circle"></i> Foto berhasil diambil dari kamera';
+        preview.appendChild(successMsg);
+        feather.replace();
+        
+        setTimeout(() => successMsg.remove(), 3000);
+      }, 100);
+    }
+  }, 'image/jpeg', 0.9);
+};
+
+// Close camera
+window.closeCameraMember = function() {
+  // Stop camera stream
+  if (currentCameraStream) {
+    currentCameraStream.getTracks().forEach(track => track.stop());
+    currentCameraStream = null;
+  }
+  
+  // Remove modal
+  const modal = document.getElementById('cameraModalMember');
+  if (modal) {
+    modal.remove();
+  }
+  
+  // Reset variables
+  currentCameraInputId = null;
+  currentCameraPreviewId = null;
+  currentFacingMode = 'user';
+};
+
+console.log('=== CAMERA FUNCTIONS FOR MEMBER LOADED ===');

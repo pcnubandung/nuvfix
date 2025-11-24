@@ -95,30 +95,59 @@ router.post('/', upload.single('gambar'), (req, res) => {
     return res.status(400).json({ error: 'Gambar wajib diisi' });
   }
   
-  const sql = `
-    INSERT INTO pengumuman (judul, konten, gambar, status, tanggal_mulai, tanggal_selesai, urutan, tampilkan_judul, tampilkan_konten)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
-  
-  const params = [
-    judul || '',
-    konten || null,
-    gambar,
-    status || 'aktif',
-    tanggal_mulai || null,
-    tanggal_selesai || null,
-    urutan || 0,
-    tampilkan_judul === 'true' || tampilkan_judul === '1' || tampilkan_judul === true ? 1 : 0,
-    tampilkan_konten === 'true' || tampilkan_konten === '1' || tampilkan_konten === true ? 1 : 0
-  ];
-  
-  db.run(sql, params, function(err) {
+  // Check if tampilkan_judul and tampilkan_konten columns exist
+  db.all('PRAGMA table_info(pengumuman)', (err, columns) => {
     if (err) {
       return res.status(500).json({ error: err.message });
     }
-    res.json({ 
-      id: this.lastID,
-      message: 'Pengumuman berhasil ditambahkan'
+    
+    const hasJudulColumn = columns.some(col => col.name === 'tampilkan_judul');
+    const hasKontenColumn = columns.some(col => col.name === 'tampilkan_konten');
+    
+    let sql, params;
+    
+    if (hasJudulColumn && hasKontenColumn) {
+      // Use full query with all columns
+      sql = `
+        INSERT INTO pengumuman (judul, konten, gambar, status, tanggal_mulai, tanggal_selesai, urutan, tampilkan_judul, tampilkan_konten)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      params = [
+        judul || '',
+        konten || null,
+        gambar,
+        status || 'aktif',
+        tanggal_mulai || null,
+        tanggal_selesai || null,
+        urutan || 0,
+        tampilkan_judul === 'true' || tampilkan_judul === '1' || tampilkan_judul === true ? 1 : 0,
+        tampilkan_konten === 'true' || tampilkan_konten === '1' || tampilkan_konten === true ? 1 : 0
+      ];
+    } else {
+      // Use basic query without tampilkan columns
+      sql = `
+        INSERT INTO pengumuman (judul, konten, gambar, status, tanggal_mulai, tanggal_selesai, urutan)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `;
+      params = [
+        judul || '',
+        konten || null,
+        gambar,
+        status || 'aktif',
+        tanggal_mulai || null,
+        tanggal_selesai || null,
+        urutan || 0
+      ];
+    }
+    
+    db.run(sql, params, function(err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ 
+        id: this.lastID,
+        message: 'Pengumuman berhasil ditambahkan'
+      });
     });
   });
 });
@@ -147,32 +176,65 @@ router.put('/:id', upload.single('gambar'), (req, res) => {
     
     const finalGambar = gambar || row.gambar;
     
-    const sql = `
-      UPDATE pengumuman 
-      SET judul = ?, konten = ?, gambar = ?, status = ?, 
-          tanggal_mulai = ?, tanggal_selesai = ?, urutan = ?,
-          tampilkan_judul = ?, tampilkan_konten = ?
-      WHERE id = ?
-    `;
-    
-    const params = [
-      judul !== undefined ? judul : row.judul,
-      konten !== undefined ? konten : row.konten,
-      finalGambar,
-      status || row.status,
-      tanggal_mulai !== undefined ? tanggal_mulai : row.tanggal_mulai,
-      tanggal_selesai !== undefined ? tanggal_selesai : row.tanggal_selesai,
-      urutan !== undefined ? urutan : row.urutan,
-      tampilkan_judul !== undefined ? (tampilkan_judul === 'true' || tampilkan_judul === '1' || tampilkan_judul === true ? 1 : 0) : row.tampilkan_judul,
-      tampilkan_konten !== undefined ? (tampilkan_konten === 'true' || tampilkan_konten === '1' || tampilkan_konten === true ? 1 : 0) : row.tampilkan_konten,
-      req.params.id
-    ];
-    
-    db.run(sql, params, function(err) {
+    // Check if tampilkan columns exist
+    db.all('PRAGMA table_info(pengumuman)', (err, columns) => {
       if (err) {
         return res.status(500).json({ error: err.message });
       }
-      res.json({ message: 'Pengumuman berhasil diupdate' });
+      
+      const hasJudulColumn = columns.some(col => col.name === 'tampilkan_judul');
+      const hasKontenColumn = columns.some(col => col.name === 'tampilkan_konten');
+      
+      let sql, params;
+      
+      if (hasJudulColumn && hasKontenColumn) {
+        // Use full query with all columns
+        sql = `
+          UPDATE pengumuman 
+          SET judul = ?, konten = ?, gambar = ?, status = ?, 
+              tanggal_mulai = ?, tanggal_selesai = ?, urutan = ?,
+              tampilkan_judul = ?, tampilkan_konten = ?
+          WHERE id = ?
+        `;
+    
+        params = [
+          judul !== undefined ? judul : row.judul,
+          konten !== undefined ? konten : row.konten,
+          finalGambar,
+          status || row.status,
+          tanggal_mulai !== undefined ? tanggal_mulai : row.tanggal_mulai,
+          tanggal_selesai !== undefined ? tanggal_selesai : row.tanggal_selesai,
+          urutan !== undefined ? urutan : row.urutan,
+          tampilkan_judul !== undefined ? (tampilkan_judul === 'true' || tampilkan_judul === '1' || tampilkan_judul === true ? 1 : 0) : (row.tampilkan_judul || 1),
+          tampilkan_konten !== undefined ? (tampilkan_konten === 'true' || tampilkan_konten === '1' || tampilkan_konten === true ? 1 : 0) : (row.tampilkan_konten || 1),
+          req.params.id
+        ];
+      } else {
+        // Use basic query without tampilkan columns
+        sql = `
+          UPDATE pengumuman 
+          SET judul = ?, konten = ?, gambar = ?, status = ?, 
+              tanggal_mulai = ?, tanggal_selesai = ?, urutan = ?
+          WHERE id = ?
+        `;
+        params = [
+          judul !== undefined ? judul : row.judul,
+          konten !== undefined ? konten : row.konten,
+          finalGambar,
+          status || row.status,
+          tanggal_mulai !== undefined ? tanggal_mulai : row.tanggal_mulai,
+          tanggal_selesai !== undefined ? tanggal_selesai : row.tanggal_selesai,
+          urutan !== undefined ? urutan : row.urutan,
+          req.params.id
+        ];
+      }
+      
+      db.run(sql, params, function(err) {
+        if (err) {
+          return res.status(500).json({ error: err.message });
+        }
+        res.json({ message: 'Pengumuman berhasil diupdate' });
+      });
     });
   });
 });

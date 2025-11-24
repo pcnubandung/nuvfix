@@ -81,7 +81,7 @@ router.post('/login', (req, res) => {
 // Get member profile (authenticated)
 router.get('/profile', authenticateMember, (req, res) => {
   db.get(
-    'SELECT id, nomor_anggota, nama_lengkap, nik, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat, nomor_telpon, email, pekerjaan, foto, tanggal_bergabung, status, username FROM anggota WHERE id = ?',
+    'SELECT id, nomor_anggota, nama_lengkap, nik, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat, nomor_telpon, email, pekerjaan, foto, foto_ktp, tanggal_bergabung, status, username FROM anggota WHERE id = ?',
     [req.user.anggota_id],
     (err, anggota) => {
       if (err) {
@@ -97,8 +97,11 @@ router.get('/profile', authenticateMember, (req, res) => {
   );
 });
 
-// Update member profile
-router.put('/profile', authenticateMember, upload.single('foto'), (req, res) => {
+// Update member profile with foto and foto_ktp
+router.put('/profile', authenticateMember, upload.fields([
+  { name: 'foto', maxCount: 1 },
+  { name: 'foto_ktp', maxCount: 1 }
+]), (req, res) => {
   const { 
     nama_lengkap, 
     nik, 
@@ -150,9 +153,17 @@ router.put('/profile', authenticateMember, upload.single('foto'), (req, res) => 
     updateFields.push('pekerjaan = ?');
     values.push(pekerjaan);
   }
-  if (req.file) {
+  
+  // Handle foto profil upload
+  if (req.files && req.files.foto && req.files.foto[0]) {
     updateFields.push('foto = ?');
-    values.push(req.file.filename);
+    values.push(req.files.foto[0].filename);
+  }
+  
+  // Handle foto KTP upload
+  if (req.files && req.files.foto_ktp && req.files.foto_ktp[0]) {
+    updateFields.push('foto_ktp = ?');
+    values.push(req.files.foto_ktp[0].filename);
   }
   
   if (updateFields.length === 0) {
@@ -168,7 +179,11 @@ router.put('/profile', authenticateMember, upload.single('foto'), (req, res) => 
       return res.status(500).json({ error: err.message });
     }
     
-    res.json({ message: 'Profil berhasil diupdate' });
+    res.json({ 
+      message: 'Profil berhasil diupdate',
+      foto: req.files && req.files.foto ? req.files.foto[0].filename : null,
+      foto_ktp: req.files && req.files.foto_ktp ? req.files.foto_ktp[0].filename : null
+    });
   });
 });
 
