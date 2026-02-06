@@ -869,6 +869,128 @@ function calculateMembership(tanggalBergabung) {
 async function renderLaporan() {
   const content = document.getElementById('memberContent');
   
+  // Set default periode
+  const currentYear = new Date().getFullYear();
+  const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
+  
+  content.innerHTML = `
+    <h2 style="font-size: 28px; color: var(--member-text); margin-bottom: 24px;">
+      <i data-feather="bar-chart-2" style="width: 28px; height: 28px; color: var(--member-primary);"></i>
+      Laporan Keuangan Koperasi
+    </h2>
+    
+    <div style="background: linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%); padding: 24px; border-radius: 16px; color: white; margin-bottom: 32px; box-shadow: 0 8px 24px rgba(46, 125, 50, 0.3);">
+      <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 12px;">
+        <i data-feather="info" style="width: 24px; height: 24px;"></i>
+        <h3 style="font-size: 18px; margin: 0;">Transparansi Keuangan</h3>
+      </div>
+      <p style="opacity: 0.95; margin: 0; line-height: 1.6;">
+        Laporan keuangan koperasi untuk transparansi kepada seluruh anggota.
+        Gunakan filter periode untuk melihat data berdasarkan waktu tertentu.
+      </p>
+    </div>
+    
+    <!-- Filter Periode -->
+    <div style="background: white; padding: 24px; border-radius: 12px; margin-bottom: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+      <h3 style="margin-bottom: 16px; color: var(--member-text);">
+        <i data-feather="filter"></i> Filter Periode
+      </h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+        <div>
+          <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--member-text);">Periode</label>
+          <select id="periodeLaporanMember" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+            <option value="harian">Harian</option>
+            <option value="bulanan">Bulanan</option>
+            <option value="tahunan">Tahunan</option>
+            <option value="seluruh" selected>Seluruh Tahun</option>
+          </select>
+        </div>
+        <div id="tahunGroupMember">
+          <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--member-text);">Tahun</label>
+          <select id="tahunLaporanMember" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+            ${Array.from({length: 10}, (_, i) => currentYear + 5 - i).map(y => `
+              <option value="${y}" ${y === currentYear ? 'selected' : ''}>${y}</option>
+            `).join('')}
+          </select>
+        </div>
+        <div id="bulanGroupMember" style="display: none;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--member-text);">Bulan</label>
+          <select id="bulanLaporanMember" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+            <option value="01">Januari</option>
+            <option value="02">Februari</option>
+            <option value="03">Maret</option>
+            <option value="04">April</option>
+            <option value="05">Mei</option>
+            <option value="06">Juni</option>
+            <option value="07">Juli</option>
+            <option value="08">Agustus</option>
+            <option value="09">September</option>
+            <option value="10">Oktober</option>
+            <option value="11">November</option>
+            <option value="12">Desember</option>
+          </select>
+        </div>
+        <div id="tanggalGroupMember" style="display: none;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--member-text);">Tanggal</label>
+          <input type="date" id="tanggalLaporanMember" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+        </div>
+        <div style="display: flex; align-items: flex-end;">
+          <button onclick="window.updateLaporanMember()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: transform 0.2s;">
+            <i data-feather="refresh-cw" style="width: 16px; height: 16px;"></i> Tampilkan
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Content Area -->
+    <div id="laporanContentMember"></div>
+  `;
+  
+  feather.replace();
+  
+  // Set default bulan
+  document.getElementById('bulanLaporanMember').value = currentMonth;
+  
+  // Event listener untuk periode change
+  document.getElementById('periodeLaporanMember').addEventListener('change', (e) => {
+    const periode = e.target.value;
+    const bulanGroup = document.getElementById('bulanGroupMember');
+    const tanggalGroup = document.getElementById('tanggalGroupMember');
+    const tahunGroup = document.getElementById('tahunGroupMember');
+    
+    if (periode === 'harian') {
+      if (tahunGroup) tahunGroup.style.display = 'block';
+      if (bulanGroup) bulanGroup.style.display = 'none';
+      if (tanggalGroup) tanggalGroup.style.display = 'block';
+    } else if (periode === 'bulanan') {
+      if (tahunGroup) tahunGroup.style.display = 'block';
+      if (bulanGroup) bulanGroup.style.display = 'block';
+      if (tanggalGroup) tanggalGroup.style.display = 'none';
+    } else if (periode === 'tahunan') {
+      if (tahunGroup) tahunGroup.style.display = 'block';
+      if (bulanGroup) bulanGroup.style.display = 'none';
+      if (tanggalGroup) tanggalGroup.style.display = 'none';
+    } else if (periode === 'seluruh') {
+      if (tahunGroup) tahunGroup.style.display = 'none';
+      if (bulanGroup) bulanGroup.style.display = 'none';
+      if (tanggalGroup) tanggalGroup.style.display = 'none';
+    }
+  });
+  
+  // Load data pertama kali dengan periode default (seluruh)
+  await updateLaporanMember();
+}
+
+// Function untuk update laporan berdasarkan filter
+window.updateLaporanMember = async function() {
+  const laporanContent = document.getElementById('laporanContentMember');
+  const periode = document.getElementById('periodeLaporanMember').value;
+  const tahun = document.getElementById('tahunLaporanMember').value;
+  const bulan = document.getElementById('bulanLaporanMember').value;
+  const tanggal = document.getElementById('tanggalLaporanMember').value;
+  
+  laporanContent.innerHTML = '<div style="text-align: center; padding: 40px;"><div class="loading"></div><p>Memuat data...</p></div>';
+  
   try {
     // Get all financial data
     const anggota = await API.get('/api/anggota');
@@ -880,6 +1002,40 @@ async function renderLaporan() {
     const pengeluaran = await API.get('/api/transaksi/pengeluaran');
     const pendapatanLain = await API.get('/api/transaksi/pendapatan-lain');
     
+    // Filter data berdasarkan periode
+    let filteredPenjualan = penjualan;
+    let filteredPengeluaran = pengeluaran;
+    let filteredPendapatanLain = pendapatanLain;
+    
+    let periodeText = 'Seluruh Data';
+    
+    if (periode === 'harian' && tanggal) {
+      filteredPenjualan = penjualan.filter(p => p.tanggal_transaksi === tanggal);
+      filteredPengeluaran = pengeluaran.filter(p => p.tanggal_transaksi === tanggal);
+      filteredPendapatanLain = pendapatanLain.filter(p => p.tanggal_transaksi === tanggal);
+      
+      const date = new Date(tanggal);
+      const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      periodeText = `${date.getDate()} ${namaBulan[date.getMonth()]} ${date.getFullYear()}`;
+    } else if (periode === 'bulanan' && bulan) {
+      const monthPrefix = `${tahun}-${bulan}`;
+      filteredPenjualan = penjualan.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(monthPrefix));
+      filteredPengeluaran = pengeluaran.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(monthPrefix));
+      filteredPendapatanLain = pendapatanLain.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(monthPrefix));
+      
+      const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      periodeText = `${namaBulan[parseInt(bulan) - 1]} ${tahun}`;
+    } else if (periode === 'tahunan') {
+      filteredPenjualan = penjualan.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(tahun));
+      filteredPengeluaran = pengeluaran.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(tahun));
+      filteredPendapatanLain = pendapatanLain.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(tahun));
+      
+      periodeText = `Tahun ${tahun}`;
+    } else if (periode === 'seluruh') {
+      // Semua data tanpa filter
+      periodeText = 'Seluruh Data';
+    }
+    
     // Calculate totals
     const totalAnggota = anggota.filter(a => a.status === 'aktif').length;
     
@@ -889,9 +1045,9 @@ async function renderLaporan() {
       simpananKhusus.reduce((sum, s) => sum + s.jumlah, 0) +
       simpananSukarela.reduce((sum, s) => sum + s.jumlah, 0);
     
-    const totalPenjualan = penjualan.reduce((sum, p) => sum + (p.jumlah_penjualan || 0), 0);
-    const totalHPP = penjualan.reduce((sum, p) => sum + (p.hpp || 0), 0);
-    const totalPendapatanLain = pendapatanLain.reduce((sum, p) => sum + (p.jumlah || 0), 0);
+    const totalPenjualan = filteredPenjualan.reduce((sum, p) => sum + (p.jumlah_penjualan || 0), 0);
+    const totalHPP = filteredPenjualan.reduce((sum, p) => sum + (p.hpp || 0), 0);
+    const totalPendapatanLain = filteredPendapatanLain.reduce((sum, p) => sum + (p.jumlah || 0), 0);
     
     // Formula Laba/Rugi (dengan Pendapatan Lain)
     const totalPendapatan = totalPenjualan + totalPendapatanLain;
@@ -904,26 +1060,26 @@ async function renderLaporan() {
     const totalSimpananSukarela = simpananSukarela.reduce((sum, s) => sum + (s.jumlah || 0), 0);
     
     // Hitung Pembelian Barang dan Pembelian Aset dari Pengeluaran
-    const pembelianBarang = pengeluaran
+    const pembelianBarang = filteredPengeluaran
       .filter(p => p.kategori === 'Pembelian Barang')
       .reduce((sum, item) => sum + parseFloat(item.jumlah || 0), 0);
     
-    const pengeluaranAset = pengeluaran
+    const pengeluaranAset = filteredPengeluaran
       .filter(p => p.kategori === 'Pembelian Aset & Inventaris' || p.kategori === 'Pembelian Aset');
     
     const pembelianAset = pengeluaranAset
       .reduce((sum, item) => sum + parseFloat(item.jumlah || 0), 0);
     
     // Hitung Penjualan Barang dan Penjualan Aset
-    const penjualanBarang = penjualan
+    const penjualanBarang = filteredPenjualan
       .filter(p => p.kategori === 'Barang' || !p.kategori)
       .reduce((sum, item) => sum + parseFloat(item.jumlah_penjualan || 0), 0);
     
-    const hppBarang = penjualan
+    const hppBarang = filteredPenjualan
       .filter(p => p.kategori === 'Barang' || !p.kategori)
       .reduce((sum, item) => sum + parseFloat(item.hpp || 0), 0);
     
-    const penjualanAset = penjualan
+    const penjualanAset = filteredPenjualan
       .filter(p => p.kategori === 'Aset')
       .reduce((sum, item) => sum + parseFloat(item.jumlah_penjualan || 0), 0);
     
@@ -931,7 +1087,7 @@ async function renderLaporan() {
     const persediaan = pembelianBarang - hppBarang;
     const aktivaTetap = pembelianAset - penjualanAset;
     
-    const biayaOperasional = pengeluaran
+    const biayaOperasional = filteredPengeluaran
       .filter(p => p.kategori !== 'Pembelian Barang' && p.kategori !== 'Pembelian Aset & Inventaris' && p.kategori !== 'Pembelian Aset')
       .reduce((sum, item) => sum + parseFloat(item.jumlah || 0), 0);
     
@@ -948,21 +1104,12 @@ async function renderLaporan() {
     
     const totalPasiva = totalSimpananPokok + totalSimpananWajib + totalSimpananKhusus + totalSimpananSukarela + cadangan + shuTahunBerjalan;
     
-    content.innerHTML = `
-      <h2 style="font-size: 28px; color: var(--member-text); margin-bottom: 24px;">
-        <i data-feather="bar-chart-2" style="width: 28px; height: 28px; color: var(--member-primary);"></i>
-        Laporan Keuangan Koperasi
-      </h2>
-      
-      <div style="background: linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%); padding: 24px; border-radius: 16px; color: white; margin-bottom: 32px; box-shadow: 0 8px 24px rgba(46, 125, 50, 0.3);">
-        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 12px;">
-          <i data-feather="info" style="width: 24px; height: 24px;"></i>
-          <h3 style="font-size: 18px; margin: 0;">Transparansi Keuangan</h3>
-        </div>
-        <p style="opacity: 0.95; margin: 0; line-height: 1.6;">
-          Laporan keuangan ini menampilkan kondisi keuangan koperasi secara real-time untuk transparansi kepada seluruh anggota.
-          Data diperbarui otomatis setiap ada transaksi baru.
-        </p>
+    laporanContent.innerHTML = `
+      <!-- Periode Info -->
+      <div style="background: linear-gradient(135deg, #667eea, #764ba2); padding: 16px 24px; border-radius: 12px; color: white; margin-bottom: 24px; text-align: center;">
+        <h3 style="margin: 0; font-size: 18px;">
+          <i data-feather="calendar"></i> Periode: <strong>${periodeText}</strong>
+        </h3>
       </div>
       
       <div class="dashboard-grid" style="margin-bottom: 32px;">
@@ -1001,7 +1148,7 @@ async function renderLaporan() {
           <div class="stat-body">
             <h3>Total Pendapatan</h3>
             <div class="stat-value">${formatCurrency(totalPendapatan)}</div>
-            <div class="stat-label">Penjualan + Pendapatan Lain</div>
+            <div class="stat-label">${periodeText}</div>
           </div>
         </div>
         
@@ -1014,7 +1161,7 @@ async function renderLaporan() {
           <div class="stat-body">
             <h3>Biaya Operasional</h3>
             <div class="stat-value">${formatCurrency(biayaOperasional)}</div>
-            <div class="stat-label">Tanpa Pembelian Barang & Aset</div>
+            <div class="stat-label">${periodeText}</div>
           </div>
         </div>
       </div>
@@ -1023,11 +1170,14 @@ async function renderLaporan() {
         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 24px;">
           <div>
             <h3 style="font-size: 16px; margin-bottom: 8px; opacity: 0.9;">
-              ${labaBersih >= 0 ? '💰 SHU Tahun Berjalan' : '📉 Rugi Tahun Berjalan'}
+              ${labaBersih >= 0 ? '💰 SHU/Laba Bersih' : '📉 Rugi'}
             </h3>
             <div style="font-size: 42px; font-weight: 700;">${formatCurrency(Math.abs(labaBersih))}</div>
             <p style="opacity: 0.9; margin: 8px 0 0 0; font-size: 14px;">
               Laba Kotor: ${formatCurrency(labaKotor)} - Biaya Operasional: ${formatCurrency(biayaOperasional)}
+            </p>
+            <p style="opacity: 0.8; margin: 4px 0 0 0; font-size: 12px;">
+              Periode: ${periodeText}
             </p>
           </div>
           <div style="text-align: right;">
@@ -1259,22 +1409,18 @@ async function renderLaporan() {
     
     feather.replace();
   } catch (error) {
-    console.error('Error loading laporan:', error);
-    content.innerHTML = `
-      <h2 style="font-size: 28px; color: var(--member-text); margin-bottom: 24px;">
-        <i data-feather="bar-chart-2" style="width: 28px; height: 28px; color: var(--member-primary);"></i>
-        Laporan Keuangan Koperasi
-      </h2>
+    console.error('Error loading laporan member:', error);
+    laporanContent.innerHTML = `
       <div class="empty-state">
         <i data-feather="alert-circle"></i>
         <h3>Terjadi Kesalahan</h3>
         <p>${error.message}</p>
-        <button class="btn btn-primary" onclick="loadPage('laporan')">Coba Lagi</button>
+        <button class="btn btn-primary" onclick="window.updateLaporanMember()">Coba Lagi</button>
       </div>
     `;
     feather.replace();
   }
-}
+};
 
 // Render Simpanan
 async function renderSimpanan() {

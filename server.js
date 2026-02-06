@@ -613,8 +613,7 @@ app.get('/api/public/stats', (req, res) => {
 });
 
 app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
-  const currentYear = new Date().getFullYear();
-  console.log('Getting dashboard stats for tahun:', currentYear);
+  console.log('Getting dashboard stats for ALL years (seluruh tahun)');
   const stats = {};
     
   // Total Anggota (tidak perlu filter tahun)
@@ -639,116 +638,65 @@ app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
       } else {
         stats.totalSimpanan = row ? parseFloat(row.total) || 0 : 0;
       }
-      continueStats(currentYear);
+      continueStats();
     });
   });
   
-  function continueStats(tahun) {
-    // Total Penjualan - coba tahun berjalan dulu, jika tidak ada data coba semua data
-    db.get("SELECT COALESCE(SUM(jumlah_penjualan), 0) as total FROM transaksi_penjualan WHERE strftime('%Y', tanggal_transaksi) = ?", [tahun.toString()], (err, row) => {
+  function continueStats() {
+    // Total Penjualan - SEMUA TAHUN
+    db.get("SELECT COALESCE(SUM(jumlah_penjualan), 0) as total FROM transaksi_penjualan", [], (err, row) => {
       if (err) {
         console.error('Error getting penjualan stats:', err);
         stats.totalPenjualan = 0;
       } else {
         stats.totalPenjualan = row ? row.total : 0;
-        console.log(`Penjualan tahun ${tahun}:`, stats.totalPenjualan);
+        console.log('Total Penjualan (seluruh tahun):', stats.totalPenjualan);
       }
-      
-      // Jika tidak ada data tahun berjalan, coba ambil data terbaru
-      if (stats.totalPenjualan === 0) {
-        db.get("SELECT COALESCE(SUM(jumlah_penjualan), 0) as total FROM transaksi_penjualan", [], (err2, row2) => {
-          if (!err2 && row2) {
-            stats.totalPenjualan = row2.total;
-            console.log('Fallback penjualan (semua data):', stats.totalPenjualan);
-          }
-          continueWithHPP(tahun);
-        });
-      } else {
-        continueWithHPP(tahun);
-      }
+      continueWithHPP();
     });
   }
   
-  function continueWithHPP(tahun) {
-    // Total HPP - coba tahun berjalan dulu
-    db.get("SELECT COALESCE(SUM(hpp), 0) as total FROM transaksi_penjualan WHERE strftime('%Y', tanggal_transaksi) = ?", [tahun.toString()], (err, row) => {
+  function continueWithHPP() {
+    // Total HPP - SEMUA TAHUN
+    db.get("SELECT COALESCE(SUM(hpp), 0) as total FROM transaksi_penjualan", [], (err, row) => {
       if (err) {
         console.error('Error getting HPP stats:', err);
         stats.totalHPP = 0;
       } else {
         stats.totalHPP = row ? row.total : 0;
-        console.log(`HPP tahun ${tahun}:`, stats.totalHPP);
+        console.log('Total HPP (seluruh tahun):', stats.totalHPP);
       }
-      
-      // Jika tidak ada data tahun berjalan, coba ambil data terbaru
-      if (stats.totalHPP === 0) {
-        db.get('SELECT COALESCE(SUM(hpp), 0) as total FROM transaksi_penjualan', [], (err2, row2) => {
-          if (!err2 && row2) {
-            stats.totalHPP = row2.total;
-            console.log('Fallback HPP (semua data):', stats.totalHPP);
-          }
-          continueWithPengeluaran(tahun);
-        });
-      } else {
-        continueWithPengeluaran(tahun);
-      }
+      continueWithPengeluaran();
     });
   }
   
-  function continueWithPengeluaran(tahun) {
-    // Total Pengeluaran - coba tahun berjalan dulu
+  function continueWithPengeluaran() {
+    // Total Pengeluaran (Biaya Operasional) - SEMUA TAHUN
     db.get(`SELECT COALESCE(SUM(jumlah), 0) as total 
             FROM pengeluaran 
-            WHERE kategori NOT IN ('Pembelian Barang', 'Pembelian Aset & Inventaris')
-            AND strftime('%Y', tanggal_transaksi) = ?`, [tahun.toString()], (err, row) => {
+            WHERE kategori NOT IN ('Pembelian Barang', 'Pembelian Aset & Inventaris')`, [], (err, row) => {
       if (err) {
         console.error('Error getting pengeluaran stats:', err);
         stats.totalPengeluaran = 0;
       } else {
         stats.totalPengeluaran = row ? row.total : 0;
-        console.log(`Pengeluaran tahun ${tahun}:`, stats.totalPengeluaran);
+        console.log('Total Pengeluaran (seluruh tahun):', stats.totalPengeluaran);
       }
-      
-      // Jika tidak ada data tahun berjalan, coba ambil data terbaru
-      if (stats.totalPengeluaran === 0) {
-        db.get(`SELECT COALESCE(SUM(jumlah), 0) as total 
-                FROM pengeluaran 
-                WHERE kategori NOT IN ('Pembelian Barang', 'Pembelian Aset & Inventaris')`, [], (err2, row2) => {
-          if (!err2 && row2) {
-            stats.totalPengeluaran = row2.total;
-            console.log('Fallback pengeluaran (semua data):', stats.totalPengeluaran);
-          }
-          continueWithPendapatanLain(tahun);
-        });
-      } else {
-        continueWithPendapatanLain(tahun);
-      }
+      continueWithPendapatanLain();
     });
   }
   
-  function continueWithPendapatanLain(tahun) {
-    // Total Pendapatan Lain - coba tahun berjalan dulu
-    db.get("SELECT COALESCE(SUM(jumlah), 0) as total FROM pendapatan_lain WHERE strftime('%Y', tanggal_transaksi) = ?", [tahun.toString()], (err, row) => {
+  function continueWithPendapatanLain() {
+    // Total Pendapatan Lain - SEMUA TAHUN
+    db.get("SELECT COALESCE(SUM(jumlah), 0) as total FROM pendapatan_lain", [], (err, row) => {
       if (err) {
         console.error('Error getting pendapatan lain stats:', err);
         stats.totalPendapatanLain = 0;
       } else {
         stats.totalPendapatanLain = row ? row.total : 0;
-        console.log(`Pendapatan lain tahun ${tahun}:`, stats.totalPendapatanLain);
+        console.log('Total Pendapatan Lain (seluruh tahun):', stats.totalPendapatanLain);
       }
-      
-      // Jika tidak ada data tahun berjalan, coba ambil data terbaru
-      if (stats.totalPendapatanLain === 0) {
-        db.get('SELECT COALESCE(SUM(jumlah), 0) as total FROM pendapatan_lain', [], (err2, row2) => {
-          if (!err2 && row2) {
-            stats.totalPendapatanLain = row2.total;
-            console.log('Fallback pendapatan lain (semua data):', stats.totalPendapatanLain);
-          }
-          finalizeStats();
-        });
-      } else {
-        finalizeStats();
-      }
+      finalizeStats();
     });
   }
   
@@ -760,12 +708,19 @@ app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
       stats.totalHPP = stats.totalHPP || 0;
       stats.totalPengeluaran = stats.totalPengeluaran || 0;
       
+      // Total Pendapatan = Penjualan + Pendapatan Lain
       stats.totalPendapatan = stats.totalPenjualan + stats.totalPendapatanLain;
+      
+      // Laba Kotor = Total Pendapatan - HPP
       stats.labaKotor = stats.totalPendapatan - stats.totalHPP;
+      
+      // Laba Bersih = Laba Kotor - Biaya Operasional
       stats.labaBersih = stats.labaKotor - stats.totalPengeluaran;
+      
+      // Laba/Rugi = Laba Bersih
       stats.labaRugi = stats.labaBersih;
       
-      console.log('Dashboard stats calculated successfully:', stats);
+      console.log('Dashboard stats calculated successfully (seluruh tahun):', stats);
       res.json(stats);
     } catch (finalError) {
       console.error('Error in finalizeStats:', finalError);
