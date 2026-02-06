@@ -1,10 +1,173 @@
 // Utility functions for Koperasi NU Vibes
 
+// Universal QR Code Generator for Admin Struk - Thermal 80mm Optimized
+function generateQRCodeHTML(qrData, transactionId, additionalInfo) {
+  additionalInfo = additionalInfo || '';
+  
+  // Clean and escape QR data - remove newlines and special chars
+  const cleanQrData = qrData.replace(/\\n/g, ' | ').replace(/'/g, '').replace(/"/g, '').replace(/\n/g, ' | ');
+  const safeTransactionId = String(transactionId).padStart(6, '0');
+  
+  return `
+    <script>
+      console.log('QR Code script loaded');
+      
+      function generateQRCode() {
+        const qrContainer = document.getElementById('qrcode');
+        const qrData = '${cleanQrData}';
+        
+        console.log('Generating QR Code...');
+        console.log('QR Data:', qrData);
+        console.log('QR Data length:', qrData.length);
+        
+        // Method 1: Try Google Charts API with smaller size for thermal
+        try {
+          console.log('Trying Google Charts API...');
+          const img = document.createElement('img');
+          
+          // Encode data properly
+          const encodedData = encodeURIComponent(qrData);
+          console.log('Encoded data length:', encodedData.length);
+          
+          const googleUrl = 'https://chart.googleapis.com/chart?chs=60x60&cht=qr&chl=' + encodedData;
+          console.log('Google URL:', googleUrl);
+          
+          img.src = googleUrl;
+          img.style.width = '55px';
+          img.style.height = '55px';
+          img.style.border = 'none';
+          
+          // Add timeout for loading
+          let loadTimeout = setTimeout(function() {
+            console.log('Google Charts timeout, trying fallback...');
+            tryQRServer();
+          }, 5000);
+          
+          img.onload = function() {
+            clearTimeout(loadTimeout);
+            console.log('Google Charts QR Code loaded successfully');
+            qrContainer.innerHTML = '';
+            qrContainer.appendChild(img);
+          };
+          
+          img.onerror = function() {
+            clearTimeout(loadTimeout);
+            console.log('Google Charts failed, trying QRServer...');
+            tryQRServer();
+          };
+          
+        } catch (error) {
+          console.error('Google Charts error:', error);
+          tryQRServer();
+        }
+        
+        function tryQRServer() {
+          try {
+            console.log('Trying QRServer API...');
+            const img2 = document.createElement('img');
+            const encodedData2 = encodeURIComponent(qrData);
+            const qrServerUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=' + encodedData2;
+            
+            console.log('QRServer URL:', qrServerUrl);
+            
+            img2.src = qrServerUrl;
+            img2.style.width = '55px';
+            img2.style.height = '55px';
+            img2.style.border = 'none';
+            
+            let loadTimeout2 = setTimeout(function() {
+              console.log('QRServer timeout, showing fallback...');
+              showFallback();
+            }, 5000);
+            
+            img2.onload = function() {
+              clearTimeout(loadTimeout2);
+              console.log('QRServer API loaded successfully');
+              qrContainer.innerHTML = '';
+              qrContainer.appendChild(img2);
+            };
+            
+            img2.onerror = function() {
+              clearTimeout(loadTimeout2);
+              console.log('QRServer failed, showing fallback...');
+              showFallback();
+            };
+            
+          } catch (error) {
+            console.error('QRServer error:', error);
+            showFallback();
+          }
+        }
+        
+        function showFallback() {
+          console.log('All QR methods failed, showing text fallback');
+          qrContainer.innerHTML = '<div style="font-size: 7px; text-align: center; padding: 8px; color: #666; line-height: 1.1; border: 1px dashed #ccc;">QR Code<br>Service<br>Unavailable<br><small style="font-size: 6px; margin-top: 3px; display: block;">TRX: #${safeTransactionId}</small></div>';
+        }
+      }
+      
+      // Start generation with proper timing
+      function startQRGeneration() {
+        const qrContainer = document.getElementById('qrcode');
+        if (qrContainer) {
+          console.log('QR container found, starting generation...');
+          generateQRCode();
+        } else {
+          console.log('QR container not found, retrying...');
+          setTimeout(startQRGeneration, 200);
+        }
+      }
+      
+      // Multiple initialization methods
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+          setTimeout(startQRGeneration, 100);
+        });
+      } else if (document.readyState === 'interactive' || document.readyState === 'complete') {
+        setTimeout(startQRGeneration, 100);
+      }
+      
+      // Fallback initialization
+      setTimeout(startQRGeneration, 500);
+    </script>
+  `;
+}
+
+// Generate Thermal 80mm CSS Styles
+function getThermalCSS() {
+  return 'body { font-family: "Courier New", monospace; width: 72mm; max-width: 72mm; margin: 0; padding: 2mm; background: white; color: #000; font-size: 11px; line-height: 1.2; }' +
+    '.header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 12px; margin-bottom: 12px; }' +
+    '.header h2 { margin: 5px 0; font-size: 14px; font-weight: bold; text-align: center; letter-spacing: 0.5px; }' +
+    '.header .address { margin: 4px 0; font-size: 9px; line-height: 1.3; text-align: center; }' +
+    '.header .contact { margin: 4px 0; font-size: 8px; text-align: center; }' +
+    '.header .website { margin: 2px 0; font-size: 8px; text-align: center; color: #333; font-weight: bold; }' +
+    '.badge { background: #000; color: white; padding: 3px 8px; font-size: 9px; font-weight: bold; margin-top: 6px; display: inline-block; border-radius: 2px; }' +
+    '.content { margin: 10px 0; }' +
+    '.row { display: flex; justify-content: space-between; margin: 3px 0; font-size: 10px; }' +
+    '.row.total { border-top: 1px dashed #000; padding-top: 6px; margin-top: 10px; font-weight: bold; font-size: 11px; }' +
+    '.footer { text-align: center; border-top: 1px dashed #000; padding-top: 10px; margin-top: 10px; font-size: 8px; }' +
+    '.qr-code { width: 60px; height: 60px; margin: 10px auto; border: 1px solid #000; display: flex; align-items: center; justify-content: center; background: white; }' +
+    '.qr-code canvas { width: 55px !important; height: 55px !important; }' +
+    '.qr-code img { width: 55px !important; height: 55px !important; }' +
+    '.qr-fallback { font-size: 7px; text-align: center; padding: 8px; line-height: 1.1; }' +
+    '.separator { border-top: 1px dashed #000; margin: 6px 0; }' +
+    '.center { text-align: center; }' +
+    '.bold { font-weight: bold; }' +
+    '.small { font-size: 8px; }' +
+    '@media print { body { width: 80mm; max-width: 80mm; margin: 0; padding: 0; font-size: 10px; } .no-print { display: none; } @page { size: 80mm auto; margin: 0; } }';
+}
+
 // Print/Cetak Struk
 window.cetakStruk = async function(id, jenis) {
-  const printWindow = window.open('', '_blank');
+  console.log('cetakStruk called with:', id, jenis);
   
   try {
+    const printWindow = window.open('', '_blank');
+    
+    if (!printWindow) {
+      alert('Pop-up diblokir! Silakan izinkan pop-up untuk mencetak struk.');
+      return;
+    }
+    
     const data = await API.get(`/api/simpanan/${jenis}`);
     const koperasi = await API.get('/api/koperasi-info');
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -24,131 +187,66 @@ window.cetakStruk = async function(id, jenis) {
       'sukarela': 'Simpanan Sukarela'
     };
     
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Struk ${jenisLabel[jenis]}</title>
-        <style>
-          body {
-            font-family: 'Courier New', monospace;
-            max-width: 300px;
-            margin: 20px auto;
-            padding: 20px;
-          }
-          .header {
-            text-align: center;
-            border-bottom: 2px dashed #333;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
-          }
-          .header h2 {
-            margin: 5px 0;
-            font-size: 18px;
-          }
-          .header p {
-            margin: 3px 0;
-            font-size: 12px;
-          }
-          .content {
-            margin: 15px 0;
-          }
-          .row {
-            display: flex;
-            justify-content: space-between;
-            margin: 8px 0;
-            font-size: 14px;
-          }
-          .row.total {
-            border-top: 2px dashed #333;
-            padding-top: 10px;
-            margin-top: 15px;
-            font-weight: bold;
-            font-size: 16px;
-          }
-          .footer {
-            text-align: center;
-            border-top: 2px dashed #333;
-            padding-top: 10px;
-            margin-top: 15px;
-            font-size: 12px;
-          }
-          @media print {
-            body {
-              margin: 0;
-              padding: 10px;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h2>${koperasi.nama_koperasi || 'KOPERASI NU VIBES'}</h2>
-          <p>${koperasi.alamat || 'Alamat Koperasi'}</p>
-          <p>Telp: ${koperasi.nomor_telpon || '-'}</p>
-        </div>
-        
-        <div class="content">
-          <div class="row">
-            <span>Jenis:</span>
-            <span><strong>${jenisLabel[jenis]}</strong></span>
-          </div>
-          <div class="row">
-            <span>No. Transaksi:</span>
-            <span>${transaksi.id}</span>
-          </div>
-          <div class="row">
-            <span>Tanggal:</span>
-            <span>${formatDate(transaksi.tanggal_transaksi)}</span>
-          </div>
-          <div class="row">
-            <span>No. Anggota:</span>
-            <span>${transaksi.nomor_anggota}</span>
-          </div>
-          <div class="row">
-            <span>Nama:</span>
-            <span>${transaksi.nama_lengkap}</span>
-          </div>
-          <div class="row">
-            <span>Metode:</span>
-            <span>${transaksi.metode_pembayaran || '-'}</span>
-          </div>
-          
-          <div class="row total">
-            <span>JUMLAH:</span>
-            <span>${formatCurrency(transaksi.jumlah)}</span>
-          </div>
-          
-          ${transaksi.keterangan ? `
-          <div class="row">
-            <span>Keterangan:</span>
-          </div>
-          <div style="font-size: 12px; margin-top: 5px;">
-            ${transaksi.keterangan}
-          </div>
-          ` : ''}
-        </div>
-        
-        <div class="footer">
-          <p>Kasir: ${user.nama_lengkap || user.username || 'Admin'}</p>
-          <p>Terima Kasih</p>
-          <p>${new Date().toLocaleString('id-ID')}</p>
-        </div>
-        
-        <script>
-          window.onload = function() {
-            window.print();
-          };
-        </script>
-      </body>
-      </html>
-    `);
+    // Generate QR Code data
+    const qrData = 'KOPERASI: ' + (koperasi.nama_koperasi || 'NU Vibes') + '\\n' +
+                   'TRX: #' + String(transaksi.id).padStart(6, '0') + '\\n' +
+                   'ANGGOTA: ' + transaksi.nomor_anggota + '\\n' +
+                   'JENIS: ' + jenisLabel[jenis] + '\\n' +
+                   'JUMLAH: ' + transaksi.jumlah + '\\n' +
+                   'TGL: ' + transaksi.tanggal_transaksi;
     
+    const qrCodeHTML = generateQRCodeHTML(qrData, transaksi.id, transaksi.nomor_anggota);
+    
+    const htmlContent = '<!DOCTYPE html>' +
+      '<html><head>' +
+      '<title>Struk ' + jenisLabel[jenis] + '</title>' +
+      '<style>' + getThermalCSS() + '</style></head><body>' +
+      '<div class="header">' +
+      '<h2>' + (koperasi.nama_koperasi || 'KOPERASI NU VIBES') + '</h2>' +
+      '<div class="address">' + (koperasi.alamat || 'Gedung Dakwah NU Kota Bandung') + '</div>' +
+      '<div class="contact">Telp: ' + (koperasi.nomor_telpon || '+628211281926') + '</div>' +
+      '<div class="website">Website: nuvibes.nukotabandung.or.id</div>' +
+      '<div><span class="badge">STRUK PEMBAYARAN</span></div>' +
+      '</div>' +
+      '<div class="content">' +
+      '<div class="separator"></div>' +
+      '<div class="row"><span>Jenis:</span><span class="bold">' + jenisLabel[jenis] + '</span></div>' +
+      '<div class="row"><span>No.Trx:</span><span class="bold">#' + String(transaksi.id).padStart(6, '0') + '</span></div>' +
+      '<div class="row"><span>Tanggal:</span><span>' + formatDate(transaksi.tanggal_transaksi) + '</span></div>' +
+      '<div class="separator"></div>' +
+      '<div class="row"><span>No.Anggota:</span><span class="bold">' + transaksi.nomor_anggota + '</span></div>' +
+      '<div class="row"><span>Nama:</span><span class="bold">' + (transaksi.nama_lengkap.length > 20 ? transaksi.nama_lengkap.substring(0, 20) + '...' : transaksi.nama_lengkap) + '</span></div>' +
+      '<div class="row"><span>Metode:</span><span>' + (transaksi.metode_pembayaran || 'Tunai') + '</span></div>' +
+      '<div class="separator"></div>' +
+      '<div class="row total center"><span class="bold">JUMLAH BAYAR</span></div>' +
+      '<div class="row total center"><span class="bold">' + formatCurrency(transaksi.jumlah) + '</span></div>' +
+      (transaksi.keterangan ? '<div class="separator"></div><div class="center small">Ket: ' + (transaksi.keterangan.length > 30 ? transaksi.keterangan.substring(0, 30) + '...' : transaksi.keterangan) + '</div>' : '') +
+      '</div>' +
+      '<div class="footer">' +
+      '<div class="separator"></div>' +
+      '<div class="qr-code" id="qrcode"><div class="qr-fallback">QR Code<br>Loading...</div></div>' +
+      '<div class="center bold">TERIMA KASIH</div>' +
+      '<div class="center small">Simpan struk sebagai bukti</div>' +
+      '<div class="separator"></div>' +
+      '<div class="center small">Kasir: ' + (user.nama_lengkap || user.username || 'Admin') + '</div>' +
+      '<div class="center small">' + new Date().toLocaleString('id-ID') + '</div>' +
+      '<div class="center small">Sistem Koperasi NU Vibes v2.0</div>' +
+      '</div>' +
+      '<div class="no-print" style="text-align: center; margin-top: 20px;">' +
+      '<button onclick="window.print()" style="padding: 10px 20px; background: #2E7D32; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;"><span>🖨️ Cetak Ulang</span></button>' +
+      '<button onclick="window.close()" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;"><span>❌ Tutup</span></button>' +
+      '</div>' +
+      qrCodeHTML +
+      '</body></html>';
+    
+    printWindow.document.write(htmlContent);
     printWindow.document.close();
+    
+    console.log('Struk berhasil dicetak');
+    
   } catch (error) {
-    console.error('Error:', error);
-    alert('Gagal mencetak struk');
-    printWindow.close();
+    console.error('Error cetakStruk:', error);
+    alert('Gagal mencetak struk: ' + error.message);
   }
 };
 
@@ -820,9 +918,16 @@ window.cetakAnggota = async function() {
 
 // Cetak Struk Pengeluaran
 window.cetakStrukPengeluaran = async function(id) {
-  const printWindow = window.open('', '_blank');
+  console.log('cetakStrukPengeluaran called with:', id);
   
   try {
+    const printWindow = window.open('', '_blank');
+    
+    if (!printWindow) {
+      alert('Pop-up diblokir! Silakan izinkan pop-up untuk mencetak struk.');
+      return;
+    }
+    
     const pengeluaran = await API.get('/api/transaksi/pengeluaran');
     const koperasi = await API.get('/api/koperasi-info');
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -835,135 +940,80 @@ window.cetakStrukPengeluaran = async function(id) {
       return;
     }
     
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Struk Pengeluaran</title>
-        <style>
-          body {
-            font-family: 'Courier New', monospace;
-            max-width: 300px;
-            margin: 20px auto;
-            padding: 20px;
-          }
-          .header {
-            text-align: center;
-            border-bottom: 2px dashed #333;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
-          }
-          .header h2 {
-            margin: 5px 0;
-            font-size: 18px;
-          }
-          .header p {
-            margin: 3px 0;
-            font-size: 12px;
-          }
-          .content {
-            margin: 15px 0;
-          }
-          .row {
-            display: flex;
-            justify-content: space-between;
-            margin: 8px 0;
-            font-size: 14px;
-          }
-          .row.total {
-            border-top: 2px dashed #333;
-            padding-top: 10px;
-            margin-top: 15px;
-            font-weight: bold;
-            font-size: 16px;
-          }
-          .footer {
-            text-align: center;
-            border-top: 2px dashed #333;
-            padding-top: 10px;
-            margin-top: 15px;
-            font-size: 12px;
-          }
-          @media print {
-            body {
-              margin: 0;
-              padding: 10px;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h2>${koperasi.nama_koperasi || 'KOPERASI NU VIBES'}</h2>
-          <p>${koperasi.alamat || 'Alamat Koperasi'}</p>
-          <p>Telp: ${koperasi.nomor_telpon || '-'}</p>
-        </div>
-        
-        <div class="content">
-          <div class="row">
-            <span>Jenis:</span>
-            <span><strong>PENGELUARAN</strong></span>
-          </div>
-          <div class="row">
-            <span>No. Transaksi:</span>
-            <span>${transaksi.id}</span>
-          </div>
-          <div class="row">
-            <span>Tanggal:</span>
-            <span>${formatDate(transaksi.tanggal_transaksi)}</span>
-          </div>
-          <div class="row">
-            <span>Unit Usaha:</span>
-            <span>${transaksi.nama_usaha || 'Umum'}</span>
-          </div>
-          <div class="row">
-            <span>Kategori:</span>
-            <span>${transaksi.kategori}</span>
-          </div>
-          
-          <div class="row total">
-            <span>JUMLAH:</span>
-            <span>${formatCurrency(transaksi.jumlah)}</span>
-          </div>
-          
-          ${transaksi.keterangan ? `
-          <div class="row">
-            <span>Keterangan:</span>
-          </div>
-          <div style="font-size: 12px; margin-top: 5px;">
-            ${transaksi.keterangan}
-          </div>
-          ` : ''}
-        </div>
-        
-        <div class="footer">
-          <p>Kasir: ${user.nama_lengkap || user.username || 'Admin'}</p>
-          <p>Terima Kasih</p>
-          <p>${new Date().toLocaleString('id-ID')}</p>
-        </div>
-        
-        <script>
-          window.onload = function() {
-            window.print();
-          };
-        </script>
-      </body>
-      </html>
-    `);
+    // Generate QR Code data
+    const qrData = 'KOPERASI: ' + (koperasi.nama_koperasi || 'NU Vibes') + '\\n' +
+                   'TRX: #' + String(transaksi.id).padStart(6, '0') + '\\n' +
+                   'JENIS: PENGELUARAN' + '\\n' +
+                   'KATEGORI: ' + transaksi.kategori + '\\n' +
+                   'JUMLAH: ' + transaksi.jumlah + '\\n' +
+                   'TGL: ' + transaksi.tanggal_transaksi;
     
+    const qrCodeHTML = generateQRCodeHTML(qrData, transaksi.id, transaksi.kategori);
+    
+    const htmlContent = '<!DOCTYPE html>' +
+      '<html><head>' +
+      '<title>Struk Pengeluaran</title>' +
+      '<style>' + getThermalCSS() + '</style></head><body>' +
+      '<div class="header">' +
+      '<h2>' + (koperasi.nama_koperasi || 'KOPERASI NU VIBES') + '</h2>' +
+      '<div class="address">' + (koperasi.alamat || 'Gedung Dakwah NU Kota Bandung') + '</div>' +
+      '<div class="contact">Telp: ' + (koperasi.nomor_telpon || '+628211281926') + '</div>' +
+      '<div class="website">Website: nuvibes.nukotabandung.or.id</div>' +
+      '<div><span class="badge">STRUK PENGELUARAN</span></div>' +
+      '</div>' +
+      '<div class="content">' +
+      '<div class="separator"></div>' +
+      '<div class="row"><span>Jenis:</span><span class="bold">PENGELUARAN</span></div>' +
+      '<div class="row"><span>No.Trx:</span><span class="bold">#' + String(transaksi.id).padStart(6, '0') + '</span></div>' +
+      '<div class="row"><span>Tanggal:</span><span>' + formatDate(transaksi.tanggal_transaksi) + '</span></div>' +
+      '<div class="separator"></div>' +
+      '<div class="row"><span>Unit Usaha:</span><span class="bold">' + (transaksi.nama_usaha || 'Umum') + '</span></div>' +
+      '<div class="row"><span>Kategori:</span><span class="bold">' + transaksi.kategori + '</span></div>' +
+      '<div class="separator"></div>' +
+      '<div class="row total center"><span class="bold">JUMLAH PENGELUARAN</span></div>' +
+      '<div class="row total center"><span class="bold">' + formatCurrency(transaksi.jumlah) + '</span></div>' +
+      (transaksi.keterangan ? '<div class="separator"></div><div class="center small">Ket: ' + (transaksi.keterangan.length > 30 ? transaksi.keterangan.substring(0, 30) + '...' : transaksi.keterangan) + '</div>' : '') +
+      '</div>' +
+      '<div class="footer">' +
+      '<div class="separator"></div>' +
+      '<div class="qr-code" id="qrcode"><div class="qr-fallback">QR Code<br>Loading...</div></div>' +
+      '<div class="center bold">TERIMA KASIH</div>' +
+      '<div class="center small">Simpan struk sebagai bukti</div>' +
+      '<div class="separator"></div>' +
+      '<div class="center small">Kasir: ' + (user.nama_lengkap || user.username || 'Admin') + '</div>' +
+      '<div class="center small">' + new Date().toLocaleString('id-ID') + '</div>' +
+      '<div class="center small">Sistem Koperasi NU Vibes v2.0</div>' +
+      '</div>' +
+      '<div class="no-print" style="text-align: center; margin-top: 20px;">' +
+      '<button onclick="window.print()" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px; font-size: 12px;"><span>🖨️ Cetak Ulang</span></button>' +
+      '<button onclick="window.close()" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px;"><span>❌ Tutup</span></button>' +
+      '</div>' +
+      qrCodeHTML +
+      '</body></html>';
+    
+    printWindow.document.write(htmlContent);
     printWindow.document.close();
+    
+    console.log('Struk pengeluaran berhasil dicetak');
+    
   } catch (error) {
-    console.error('Error:', error);
-    alert('Gagal mencetak struk');
-    printWindow.close();
+    console.error('Error cetakStrukPengeluaran:', error);
+    alert('Gagal mencetak struk pengeluaran: ' + error.message);
   }
 };
 
 // Cetak Struk Pendapatan Lain
 window.cetakStrukPendapatanLain = async function(id) {
-  const printWindow = window.open('', '_blank');
+  console.log('cetakStrukPendapatanLain called with:', id);
   
   try {
+    const printWindow = window.open('', '_blank');
+    
+    if (!printWindow) {
+      alert('Pop-up diblokir! Silakan izinkan pop-up untuk mencetak struk.');
+      return;
+    }
+    
     const pendapatanLain = await API.get('/api/transaksi/pendapatan-lain');
     const koperasi = await API.get('/api/koperasi-info');
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -976,128 +1026,65 @@ window.cetakStrukPendapatanLain = async function(id) {
       return;
     }
     
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Struk Pendapatan Lain</title>
-        <style>
-          body {
-            font-family: 'Courier New', monospace;
-            max-width: 300px;
-            margin: 20px auto;
-            padding: 20px;
-          }
-          .header {
-            text-align: center;
-            border-bottom: 2px dashed #333;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
-          }
-          .header h2 {
-            margin: 5px 0;
-            font-size: 18px;
-          }
-          .header p {
-            margin: 3px 0;
-            font-size: 12px;
-          }
-          .content {
-            margin: 15px 0;
-          }
-          .row {
-            display: flex;
-            justify-content: space-between;
-            margin: 8px 0;
-            font-size: 14px;
-          }
-          .row.total {
-            border-top: 2px dashed #333;
-            padding-top: 10px;
-            margin-top: 15px;
-            font-weight: bold;
-            font-size: 16px;
-            color: #28a745;
-          }
-          .footer {
-            text-align: center;
-            border-top: 2px dashed #333;
-            padding-top: 10px;
-            margin-top: 15px;
-            font-size: 12px;
-          }
-          @media print {
-            body {
-              margin: 0;
-              padding: 10px;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h2>${koperasi.nama_koperasi || 'KOPERASI NU VIBES'}</h2>
-          <p>${koperasi.alamat || 'Alamat Koperasi'}</p>
-          <p>Telp: ${koperasi.nomor_telpon || '-'}</p>
-        </div>
-        
-        <div class="content">
-          <div class="row">
-            <span>Jenis:</span>
-            <span><strong>PENDAPATAN LAIN</strong></span>
-          </div>
-          <div class="row">
-            <span>No. Transaksi:</span>
-            <span>${transaksi.id}</span>
-          </div>
-          <div class="row">
-            <span>Tanggal:</span>
-            <span>${formatDate(transaksi.tanggal_transaksi)}</span>
-          </div>
-          <div class="row">
-            <span>Unit Usaha:</span>
-            <span>${transaksi.nama_usaha || 'Umum'}</span>
-          </div>
-          <div class="row">
-            <span>Kategori:</span>
-            <span>${transaksi.kategori}</span>
-          </div>
-          
-          <div class="row total">
-            <span>JUMLAH:</span>
-            <span>${formatCurrency(transaksi.jumlah)}</span>
-          </div>
-          
-          ${transaksi.keterangan ? `
-          <div class="row">
-            <span>Keterangan:</span>
-          </div>
-          <div style="margin: 5px 0; font-size: 12px;">
-            ${transaksi.keterangan}
-          </div>
-          ` : ''}
-        </div>
-        
-        <div class="footer">
-          <p>Petugas: ${user.nama_lengkap || user.username || 'Admin'}</p>
-          <p>Tanggal Cetak: ${new Date().toLocaleString('id-ID')}</p>
-          <p style="margin-top: 15px;">Terima Kasih</p>
-        </div>
-        
-        <script>
-          window.onload = function() {
-            window.print();
-          };
-        </script>
-      </body>
-      </html>
-    `);
+    // Generate QR Code data
+    const qrData = 'KOPERASI: ' + (koperasi.nama_koperasi || 'NU Vibes') + '\\n' +
+                   'TRX: #' + String(transaksi.id).padStart(6, '0') + '\\n' +
+                   'JENIS: PENDAPATAN LAIN' + '\\n' +
+                   'KATEGORI: ' + transaksi.kategori + '\\n' +
+                   'JUMLAH: ' + transaksi.jumlah + '\\n' +
+                   'TGL: ' + transaksi.tanggal_transaksi;
     
+    const qrCodeHTML = generateQRCodeHTML(qrData, transaksi.id, transaksi.kategori);
+    
+    const htmlContent = '<!DOCTYPE html>' +
+      '<html><head>' +
+      '<title>Struk Pendapatan Lain</title>' +
+      '<style>' + getThermalCSS() + '</style></head><body>' +
+      '<div class="header">' +
+      '<h2>' + (koperasi.nama_koperasi || 'KOPERASI NU VIBES') + '</h2>' +
+      '<div class="address">' + (koperasi.alamat || 'Gedung Dakwah NU Kota Bandung') + '</div>' +
+      '<div class="contact">Telp: ' + (koperasi.nomor_telpon || '+628211281926') + '</div>' +
+      '<div class="website">Website: nuvibes.nukotabandung.or.id</div>' +
+      '<div style="margin-top: 5px;"><span class="badge">STRUK PENDAPATAN LAIN</span></div>' +
+      '</div>' +
+      '<div class="content">' +
+      '<div class="separator"></div>' +
+      '<div class="row"><span>Jenis:</span><span class="bold">PENDAPATAN LAIN</span></div>' +
+      '<div class="row"><span>No.Trx:</span><span class="bold">#' + String(transaksi.id).padStart(6, '0') + '</span></div>' +
+      '<div class="row"><span>Tanggal:</span><span>' + formatDate(transaksi.tanggal_transaksi) + '</span></div>' +
+      '<div class="separator"></div>' +
+      '<div class="row"><span>Unit Usaha:</span><span class="bold">' + (transaksi.nama_usaha || 'Umum') + '</span></div>' +
+      '<div class="row"><span>Kategori:</span><span class="bold">' + transaksi.kategori + '</span></div>' +
+      '<div class="separator"></div>' +
+      '<div class="row total center"><span class="bold">JUMLAH PENDAPATAN</span></div>' +
+      '<div class="row total center"><span class="bold">' + formatCurrency(transaksi.jumlah) + '</span></div>' +
+      (transaksi.keterangan ? '<div class="separator"></div><div class="center small">Ket: ' + (transaksi.keterangan.length > 30 ? transaksi.keterangan.substring(0, 30) + '...' : transaksi.keterangan) + '</div>' : '') +
+      '</div>' +
+      '<div class="footer">' +
+      '<div class="separator"></div>' +
+      '<div class="qr-code" id="qrcode"><div class="qr-fallback">QR Code<br>Loading...</div></div>' +
+      '<div class="center bold">TERIMA KASIH</div>' +
+      '<div class="center small">Simpan struk sebagai bukti</div>' +
+      '<div class="separator"></div>' +
+      '<div class="center small">Petugas: ' + (user.nama_lengkap || user.username || 'Admin') + '</div>' +
+      '<div class="center small">' + new Date().toLocaleString('id-ID') + '</div>' +
+      '<div class="center small">Sistem Koperasi NU Vibes v2.0</div>' +
+      '</div>' +
+      '<div class="no-print" style="text-align: center; margin-top: 20px;">' +
+      '<button onclick="window.print()" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px; font-size: 12px;"><span>🖨️ Cetak Ulang</span></button>' +
+      '<button onclick="window.close()" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px;"><span>❌ Tutup</span></button>' +
+      '</div>' +
+      qrCodeHTML +
+      '</body></html>';
+    
+    printWindow.document.write(htmlContent);
     printWindow.document.close();
+    
+    console.log('Struk pendapatan lain berhasil dicetak');
+    
   } catch (error) {
-    console.error('Error:', error);
-    alert('Gagal mencetak struk: ' + error.message);
-    printWindow.close();
+    console.error('Error cetakStrukPendapatanLain:', error);
+    alert('Gagal mencetak struk pendapatan lain: ' + error.message);
   }
 };
 

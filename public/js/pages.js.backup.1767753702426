@@ -3639,26 +3639,24 @@ window.renderLaporan = async function() {
       <div class="form-row">
         <div class="form-group">
           <label>Jenis Laporan</label>
-          <select id="jenisLaporan" onchange="togglePeriodeOptions()">
+          <select id="jenisLaporan">
             <option value="labarugi">Laporan Laba/Rugi</option>
             <option value="neraca">Neraca</option>
             <option value="aruskas">Laporan Arus Kas</option>
             <option value="bukukas">Buku Kas</option>
-            <option value="keseluruhan">Laporan Keuangan Keseluruhan Tahun</option>
           </select>
         </div>
         
-        <div class="form-group" id="periodeGroup">
+        <div class="form-group">
           <label>Periode</label>
           <select id="periodeLaporan">
             <option value="harian">Harian</option>
             <option value="bulanan">Bulanan</option>
             <option value="tahunan">Tahunan</option>
-            <option value="seluruh">Seluruh Tahun</option>
           </select>
         </div>
         
-        <div class="form-group" id="tahunGroup">
+        <div class="form-group">
           <label>Tahun</label>
           <select id="tahunLaporan">
             ${Array.from({length: 10}, (_, i) => new Date().getFullYear() + 5 - i).map(y => `
@@ -3705,41 +3703,23 @@ window.renderLaporan = async function() {
   const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
   document.getElementById('bulanLaporan').value = currentMonth;
   
-  // Handle jenis laporan change
-  document.getElementById('jenisLaporan').addEventListener('change', togglePeriodeOptions);
-  
   // Handle periode change
   document.getElementById('periodeLaporan').addEventListener('change', (e) => {
     const periode = e.target.value;
     const bulanGroup = document.getElementById('bulanGroup');
     const tanggalGroup = document.getElementById('tanggalGroup');
-    const tahunGroup = document.getElementById('tahunGroup');
     
     if (periode === 'harian') {
-      // Harian: Tampilkan tahun dan tanggal, sembunyikan bulan
-      if (tahunGroup) tahunGroup.style.display = 'block';
-      if (bulanGroup) bulanGroup.style.display = 'none';
-      if (tanggalGroup) tanggalGroup.style.display = 'block';
+      bulanGroup.style.display = 'none';
+      tanggalGroup.style.display = 'block';
     } else if (periode === 'bulanan') {
-      // Bulanan: Tampilkan tahun dan bulan, sembunyikan tanggal
-      if (tahunGroup) tahunGroup.style.display = 'block';
-      if (bulanGroup) bulanGroup.style.display = 'block';
-      if (tanggalGroup) tanggalGroup.style.display = 'none';
-    } else if (periode === 'tahunan') {
-      // Tahunan: Tampilkan tahun saja, sembunyikan bulan dan tanggal
-      if (tahunGroup) tahunGroup.style.display = 'block';
-      if (bulanGroup) bulanGroup.style.display = 'none';
-      if (tanggalGroup) tanggalGroup.style.display = 'none';
-    } else if (periode === 'seluruh') {
-      // Seluruh Tahun: Sembunyikan SEMUA filter
-      if (tahunGroup) tahunGroup.style.display = 'none';
-      if (bulanGroup) bulanGroup.style.display = 'none';
-      if (tanggalGroup) tanggalGroup.style.display = 'none';
+      bulanGroup.style.display = 'block';
+      tanggalGroup.style.display = 'none';
+    } else {
+      bulanGroup.style.display = 'none';
+      tanggalGroup.style.display = 'none';
     }
   });
-  
-  // Initialize visibility
-  togglePeriodeOptions();
 }
 
 window.tampilkanLaporan = async function() {
@@ -3753,12 +3733,6 @@ window.tampilkanLaporan = async function() {
   laporanContent.innerHTML = '<div class="loading">Memuat laporan...</div>';
   
   try {
-    if (jenis === 'keseluruhan') {
-      // Laporan Keuangan Keseluruhan Tahun
-      await tampilkanLaporanKeseluruhan(tahun);
-      return;
-    }
-    
     if (jenis === 'labarugi') {
       const penjualan = await API.get('/api/transaksi/penjualan');
       const pengeluaran = await API.get('/api/transaksi/pengeluaran');
@@ -3781,16 +3755,11 @@ window.tampilkanLaporan = async function() {
       } else if (periode === 'bulanan' && bulan) {
         filteredPenjualan = penjualanData.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(`${tahun}-${bulan}`));
         filteredPengeluaran = pengeluaranData.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(`${tahun}-${bulan}`));
-        filteredPendapatanLain = pendapatanLainData.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(`${tahun}-${bulan}`));
+        filteredPendapatanLain = pendapatanLain.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(`${tahun}-${bulan}`));
       } else if (periode === 'tahunan') {
-        filteredPenjualan = penjualanData.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(tahun));
-        filteredPengeluaran = pengeluaranData.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(tahun));
-        filteredPendapatanLain = pendapatanLainData.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(tahun));
-      } else if (periode === 'seluruh') {
-        // Seluruh tahun - SEMUA data tanpa filter
-        filteredPenjualan = penjualanData;
-        filteredPengeluaran = pengeluaranData;
-        filteredPendapatanLain = pendapatanLainData;
+        filteredPenjualan = penjualan.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(tahun));
+        filteredPengeluaran = pengeluaran.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(tahun));
+        filteredPendapatanLain = pendapatanLain.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(tahun));
       }
       
       const totalPenjualan = filteredPenjualan.reduce((sum, item) => sum + parseFloat(item.jumlah_penjualan || 0), 0);
@@ -3900,12 +3869,6 @@ window.tampilkanLaporan = async function() {
         filteredWajib = wajib.filter(s => s.tanggal_transaksi && s.tanggal_transaksi.startsWith(tahun));
         filteredKhusus = khusus.filter(s => s.tanggal_transaksi && s.tanggal_transaksi.startsWith(tahun));
         filteredSukarela = sukarela.filter(s => s.tanggal_transaksi && s.tanggal_transaksi.startsWith(tahun));
-      } else if (periode === 'seluruh') {
-        // Seluruh tahun - SEMUA data tanpa filter
-        filteredSimpanan = simpanan;
-        filteredWajib = wajib;
-        filteredKhusus = khusus;
-        filteredSukarela = sukarela;
       }
       
       // Calculate simpanan sukarela with setoran (+) and penarikan (-)
@@ -3939,11 +3902,6 @@ window.tampilkanLaporan = async function() {
         filteredPenjualan = penjualan.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(tahun));
         filteredPengeluaran = pengeluaran.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(tahun));
         filteredPendapatanLain = pendapatanLain.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(tahun));
-      } else if (periode === 'seluruh') {
-        // Seluruh tahun - SEMUA data tanpa filter
-        filteredPenjualan = penjualan;
-        filteredPengeluaran = pengeluaran;
-        filteredPendapatanLain = pendapatanLain;
       }
       
       const totalPenjualan = filteredPenjualan.reduce((sum, item) => sum + parseFloat(item.jumlah_penjualan || 0), 0);
@@ -3991,7 +3949,20 @@ window.tampilkanLaporan = async function() {
       // Aktiva Tetap = Pembelian Aset - Penjualan Aset
       const aktivaTetap = pembelianAset - penjualanAset;
       
-      // Get Cadangan from SHU tahun sebelumnya (hitung dulu sebelum kasBank)
+      // Kas & Bank = Total Simpanan + Laba Bersih - Persediaan - Aktiva Tetap
+      // (Pendapatan Lain sudah termasuk dalam Laba Bersih)
+      const kasBank = totalSimpanan + labaBersih - persediaan - aktivaTetap;
+      
+      const totalAktiva = kasBank + persediaan + aktivaTetap;
+      
+      // PASIVA & MODAL
+      // Hutang Jangka Pendek = Simpanan Sukarela
+      const hutangJangkaPendek = totalSukarela;
+      
+      // Hutang Jangka Panjang = Simpanan Khusus
+      const hutangJangkaPanjang = totalSimpananKhusus;
+      
+      // Get Cadangan from SHU tahun sebelumnya
       const tahunSebelumnya = parseInt(tahun) - 1;
       let cadangan = 0;
       try {
@@ -4005,19 +3976,6 @@ window.tampilkanLaporan = async function() {
       } catch (error) {
         console.log('No SHU data for previous year');
       }
-      
-      // Kas & Bank = Total Simpanan + Laba Bersih + Cadangan - Persediaan - Aktiva Tetap
-      // (Pendapatan Lain sudah termasuk dalam Laba Bersih)
-      const kasBank = totalSimpanan + labaBersih + cadangan - persediaan - aktivaTetap;
-      
-      const totalAktiva = kasBank + persediaan + aktivaTetap;
-      
-      // PASIVA & MODAL
-      // Hutang Jangka Pendek = Simpanan Sukarela
-      const hutangJangkaPendek = totalSukarela;
-      
-      // Hutang Jangka Panjang = Simpanan Khusus
-      const hutangJangkaPanjang = totalSimpananKhusus;
       
       // SHU Tahun Berjalan = Laba Bersih (sama dengan Laporan Laba/Rugi)
       const shuTahunBerjalan = labaBersih;
@@ -4035,8 +3993,6 @@ window.tampilkanLaporan = async function() {
         periodeText = `${namaBulan[parseInt(bulan) - 1]} ${tahun}`;
       } else if (periode === 'tahunan') {
         periodeText = `Tahun ${tahun}`;
-      } else if (periode === 'seluruh') {
-        periodeText = `Seluruh Data`;
       } else {
         periodeText = `Semua Periode`;
       }
@@ -4197,16 +4153,6 @@ window.tampilkanLaporan = async function() {
         filteredPengeluaran = pengeluaran.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(tahun));
         filteredPendapatanLain = pendapatanLain.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(tahun));
         filteredAset = aset.filter(a => a.tanggal_perolehan && a.tanggal_perolehan.startsWith(tahun));
-      } else if (periode === 'seluruh') {
-        // Seluruh tahun - SEMUA data tanpa filter
-        filteredSimpananPokok = simpananPokok;
-        filteredSimpananWajib = simpananWajib;
-        filteredSimpananKhusus = simpananKhusus;
-        filteredSimpananSukarela = simpananSukarela;
-        filteredPenjualan = penjualan;
-        filteredPengeluaran = pengeluaran;
-        filteredPendapatanLain = pendapatanLain;
-        filteredAset = aset;
       }
       
       // AKTIVITAS OPERASIONAL
@@ -4273,8 +4219,6 @@ window.tampilkanLaporan = async function() {
         periodeText = `${namaBulan[parseInt(bulan) - 1]} ${tahun}`;
       } else if (periode === 'tahunan') {
         periodeText = `Tahun ${tahun}`;
-      } else if (periode === 'seluruh') {
-        periodeText = `Seluruh Data`;
       } else {
         periodeText = `Semua Periode`;
       }
@@ -4474,9 +4418,6 @@ window.tampilkanLaporan = async function() {
         allTransactions = allTransactions.filter(t => t.tanggal && t.tanggal.startsWith(`${tahun}-${bulan}`));
       } else if (periode === 'tahunan') {
         allTransactions = allTransactions.filter(t => t.tanggal && t.tanggal.startsWith(tahun));
-      } else if (periode === 'seluruh') {
-        // Seluruh tahun - SEMUA data tanpa filter
-        // allTransactions sudah berisi semua data
       }
       
       // Sort by date
@@ -4503,10 +4444,6 @@ window.tampilkanLaporan = async function() {
       } else if (periode === 'bulanan' && bulan) {
         const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
         periodeText = `${namaBulan[parseInt(bulan) - 1]} ${tahun}`;
-      } else if (periode === 'tahunan') {
-        periodeText = `Tahun ${tahun}`;
-      } else if (periode === 'seluruh') {
-        periodeText = `Seluruh Data`;
       } else {
         periodeText = `Tahun ${tahun}`;
       }
@@ -4590,406 +4527,6 @@ window.tampilkanLaporan = async function() {
   } catch (error) {
     laporanContent.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
   }
-};
-
-// Toggle periode options based on jenis laporan
-window.togglePeriodeOptions = function() {
-  const jenis = document.getElementById('jenisLaporan').value;
-  const periodeGroup = document.getElementById('periodeGroup');
-  const bulanGroup = document.getElementById('bulanGroup');
-  const tanggalGroup = document.getElementById('tanggalGroup');
-  
-  if (jenis === 'keseluruhan') {
-    // Untuk laporan keseluruhan, sembunyikan periode, bulan, tanggal
-    periodeGroup.style.display = 'none';
-    bulanGroup.style.display = 'none';
-    tanggalGroup.style.display = 'none';
-  } else {
-    // Untuk laporan lain, tampilkan periode
-    periodeGroup.style.display = 'block';
-    
-    // Update visibility bulan/tanggal berdasarkan periode
-    const periode = document.getElementById('periodeLaporan').value;
-    if (periode === 'harian') {
-      bulanGroup.style.display = 'none';
-      tanggalGroup.style.display = 'block';
-    } else if (periode === 'bulanan') {
-      bulanGroup.style.display = 'block';
-      tanggalGroup.style.display = 'none';
-    } else {
-      bulanGroup.style.display = 'none';
-      tanggalGroup.style.display = 'none';
-    }
-  }
-};
-
-// Tampilkan Laporan Keuangan Keseluruhan Tahun
-window.tampilkanLaporanKeseluruhan = async function(tahun) {
-  const laporanContent = document.getElementById('laporanContent');
-  
-  try {
-    // Ambil semua data transaksi untuk tahun yang dipilih
-    const penjualan = await API.get('/api/transaksi/penjualan');
-    const pengeluaran = await API.get('/api/transaksi/pengeluaran');
-    const pendapatanLain = await API.get('/api/transaksi/pendapatan-lain');
-    const partisipasi = await API.get('/api/partisipasi');
-    
-    // Filter data berdasarkan tahun - pastikan data array dan ada tanggal_transaksi
-    const filteredPenjualan = Array.isArray(penjualan) ? penjualan.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(tahun)) : [];
-    const filteredPengeluaran = Array.isArray(pengeluaran) ? pengeluaran.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(tahun)) : [];
-    const filteredPendapatanLain = Array.isArray(pendapatanLain) ? pendapatanLain.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(tahun)) : [];
-    const filteredPartisipasi = Array.isArray(partisipasi) ? partisipasi.filter(p => p.tanggal_transaksi && p.tanggal_transaksi.startsWith(tahun)) : [];
-    
-    // Hitung total per kategori - pastikan parsing numerik yang benar
-    const totalPenjualan = filteredPenjualan.reduce((sum, item) => {
-      const nilai = parseFloat(item.jumlah_penjualan || 0);
-      return sum + (isNaN(nilai) ? 0 : nilai);
-    }, 0);
-    
-    const totalHPP = filteredPenjualan.reduce((sum, item) => {
-      const nilai = parseFloat(item.hpp || 0);
-      return sum + (isNaN(nilai) ? 0 : nilai);
-    }, 0);
-    
-    const totalPendapatanLain = filteredPendapatanLain.reduce((sum, item) => {
-      const nilai = parseFloat(item.jumlah || 0);
-      return sum + (isNaN(nilai) ? 0 : nilai);
-    }, 0);
-    
-    const totalPartisipasi = filteredPartisipasi.reduce((sum, item) => {
-      const nilai = parseFloat(item.jumlah_transaksi || 0);
-      return sum + (isNaN(nilai) ? 0 : nilai);
-    }, 0);
-    
-    // Kategorisasi pengeluaran
-    const pengeluaranOperasional = filteredPengeluaran.filter(p => 
-      p.kategori !== 'Pembelian Barang' && p.kategori !== 'Pembelian Aset & Inventaris'
-    );
-    const pembelianBarang = filteredPengeluaran.filter(p => p.kategori === 'Pembelian Barang');
-    const pembelianAset = filteredPengeluaran.filter(p => p.kategori === 'Pembelian Aset & Inventaris');
-    
-    const totalPengeluaranOperasional = pengeluaranOperasional.reduce((sum, item) => {
-      const nilai = parseFloat(item.jumlah || 0);
-      return sum + (isNaN(nilai) ? 0 : nilai);
-    }, 0);
-    
-    const totalPembelianBarang = pembelianBarang.reduce((sum, item) => {
-      const nilai = parseFloat(item.jumlah || 0);
-      return sum + (isNaN(nilai) ? 0 : nilai);
-    }, 0);
-    
-    const totalPembelianAset = pembelianAset.reduce((sum, item) => {
-      const nilai = parseFloat(item.jumlah || 0);
-      return sum + (isNaN(nilai) ? 0 : nilai);
-    }, 0);
-    
-    // Hitung ringkasan keuangan
-    const totalPendapatan = totalPenjualan + totalPendapatanLain;
-    const labaKotor = totalPendapatan - totalHPP;
-    const labaBersih = labaKotor - totalPengeluaranOperasional;
-    
-    // Debug logging
-    console.log('=== DEBUG LAPORAN KESELURUHAN ===');
-    console.log('Tahun:', tahun);
-    console.log('Total Penjualan:', totalPenjualan);
-    console.log('Total Pendapatan Lain:', totalPendapatanLain);
-    console.log('Total Pendapatan (Penjualan + Pendapatan Lain):', totalPendapatan);
-    console.log('Filtered Pendapatan Lain Data:', filteredPendapatanLain);
-    // Hitung persentase dengan validasi
-    const persentasePenjualan = totalPendapatan > 0 ? ((totalPenjualan / totalPendapatan) * 100) : 0;
-    const persentasePendapatanLain = totalPendapatan > 0 ? ((totalPendapatanLain / totalPendapatan) * 100) : 0;
-    
-    console.log('Persentase Penjualan (calculated):', persentasePenjualan);
-    console.log('Persentase Pendapatan Lain (calculated):', persentasePendapatanLain);
-    console.log('=================================');
-    
-    // Hitung data per bulan untuk grafik
-    const dataPerBulan = [];
-    for (let bulan = 1; bulan <= 12; bulan++) {
-      const bulanStr = bulan.toString().padStart(2, '0');
-      const penjualanBulan = filteredPenjualan.filter(p => p.tanggal_transaksi.includes(`${tahun}-${bulanStr}`));
-      const pengeluaranBulan = pengeluaranOperasional.filter(p => p.tanggal_transaksi.includes(`${tahun}-${bulanStr}`));
-      const pendapatanLainBulan = filteredPendapatanLain.filter(p => p.tanggal_transaksi.includes(`${tahun}-${bulanStr}`));
-      
-      const totalPenjualanBulan = penjualanBulan.reduce((sum, item) => {
-        const nilai = parseFloat(item.jumlah_penjualan || 0);
-        return sum + (isNaN(nilai) ? 0 : nilai);
-      }, 0);
-      
-      const totalPengeluaranBulan = pengeluaranBulan.reduce((sum, item) => {
-        const nilai = parseFloat(item.jumlah || 0);
-        return sum + (isNaN(nilai) ? 0 : nilai);
-      }, 0);
-      
-      const totalPendapatanLainBulan = pendapatanLainBulan.reduce((sum, item) => {
-        const nilai = parseFloat(item.jumlah || 0);
-        return sum + (isNaN(nilai) ? 0 : nilai);
-      }, 0);
-      
-      dataPerBulan.push({
-        bulan: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][bulan - 1],
-        penjualan: totalPenjualanBulan,
-        pengeluaran: totalPengeluaranBulan,
-        pendapatanLain: totalPendapatanLainBulan,
-        netIncome: (totalPenjualanBulan + totalPendapatanLainBulan) - totalPengeluaranBulan
-      });
-    }
-    
-    laporanContent.innerHTML = `
-      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 30px; text-align: center;">
-        <h2 style="margin: 0 0 10px 0; font-size: 28px;">📊 Laporan Keuangan Keseluruhan</h2>
-        <p style="margin: 0; font-size: 18px; opacity: 0.9;">Tahun ${tahun}</p>
-      </div>
-      
-      <!-- Ringkasan Keuangan -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
-        <div style="background: linear-gradient(135deg, #4CAF50, #45a049); color: white; padding: 25px; border-radius: 12px; text-align: center;">
-          <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">Total Pendapatan</div>
-          <div style="font-size: 24px; font-weight: bold;">${formatCurrency(totalPendapatan)}</div>
-          <div style="font-size: 12px; opacity: 0.8; margin-top: 5px;">Penjualan + Pendapatan Lain</div>
-        </div>
-        
-        <div style="background: linear-gradient(135deg, #2196F3, #1976D2); color: white; padding: 25px; border-radius: 12px; text-align: center;">
-          <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">Laba Kotor</div>
-          <div style="font-size: 24px; font-weight: bold;">${formatCurrency(labaKotor)}</div>
-          <div style="font-size: 12px; opacity: 0.8; margin-top: 5px;">Pendapatan - HPP</div>
-        </div>
-        
-        <div style="background: linear-gradient(135deg, ${labaBersih >= 0 ? '#FF9800, #F57C00' : '#f44336, #d32f2f'}); color: white; padding: 25px; border-radius: 12px; text-align: center;">
-          <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">${labaBersih >= 0 ? 'Laba Bersih' : 'Rugi Bersih'}</div>
-          <div style="font-size: 24px; font-weight: bold;">${formatCurrency(Math.abs(labaBersih))}</div>
-          <div style="font-size: 12px; opacity: 0.8; margin-top: 5px;">Laba Kotor - Biaya Operasional</div>
-        </div>
-        
-        <div style="background: linear-gradient(135deg, #9C27B0, #7B1FA2); color: white; padding: 25px; border-radius: 12px; text-align: center;">
-          <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">Total Partisipasi</div>
-          <div style="font-size: 24px; font-weight: bold;">${formatCurrency(totalPartisipasi)}</div>
-          <div style="font-size: 12px; opacity: 0.8; margin-top: 5px;">Transaksi Anggota</div>
-        </div>
-      </div>
-      
-      <!-- Detail Pendapatan -->
-      <div class="card" style="margin-bottom: 30px;">
-        <div class="card-header">
-          <h4 style="color: #4CAF50; margin: 0;">💰 Detail Pendapatan</h4>
-        </div>
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Kategori</th>
-                <th style="text-align: right;">Jumlah</th>
-                <th style="text-align: right;">Persentase</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Penjualan</td>
-                <td style="text-align: right;">${formatCurrency(totalPenjualan)}</td>
-                <td style="text-align: right;">${persentasePenjualan.toFixed(1)}%</td>
-              </tr>
-              <tr>
-                <td>Pendapatan Lain</td>
-                <td style="text-align: right;">${formatCurrency(totalPendapatanLain)}</td>
-                <td style="text-align: right;">${persentasePendapatanLain.toFixed(1)}%</td>
-              </tr>
-              <tr style="background: #e8f5e9; font-weight: bold;">
-                <td><strong>Total Pendapatan</strong></td>
-                <td style="text-align: right;"><strong>${formatCurrency(totalPendapatan)}</strong></td>
-                <td style="text-align: right;"><strong>100%</strong></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-      
-      <!-- Detail Pengeluaran -->
-      <div class="card" style="margin-bottom: 30px;">
-        <div class="card-header">
-          <h4 style="color: #f44336; margin: 0;">💸 Detail Pengeluaran</h4>
-        </div>
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Kategori</th>
-                <th style="text-align: right;">Jumlah</th>
-                <th>Keterangan</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>HPP (Harga Pokok Penjualan)</td>
-                <td style="text-align: right; color: #f44336;">${formatCurrency(totalHPP)}</td>
-                <td style="font-size: 12px; color: #666;">Biaya langsung produksi</td>
-              </tr>
-              <tr>
-                <td>Biaya Operasional</td>
-                <td style="text-align: right; color: #f44336;">${formatCurrency(totalPengeluaranOperasional)}</td>
-                <td style="font-size: 12px; color: #666;">Biaya operasional harian</td>
-              </tr>
-              <tr>
-                <td>Pembelian Barang</td>
-                <td style="text-align: right; color: #FF9800;">${formatCurrency(totalPembelianBarang)}</td>
-                <td style="font-size: 12px; color: #666;">Masuk ke persediaan</td>
-              </tr>
-              <tr>
-                <td>Pembelian Aset & Inventaris</td>
-                <td style="text-align: right; color: #FF9800;">${formatCurrency(totalPembelianAset)}</td>
-                <td style="font-size: 12px; color: #666;">Masuk ke aset tetap</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-      
-      <!-- Grafik Tren Bulanan -->
-      <div class="card" style="margin-bottom: 30px;">
-        <div class="card-header">
-          <h4 style="color: #2196F3; margin: 0;">📈 Tren Keuangan Bulanan ${tahun}</h4>
-        </div>
-        <div style="padding: 20px;">
-          <canvas id="trenBulananChart" width="800" height="400"></canvas>
-        </div>
-      </div>
-      
-      <!-- Ringkasan Transaksi -->
-      <div class="card">
-        <div class="card-header">
-          <h4 style="color: #9C27B0; margin: 0;">📋 Ringkasan Transaksi</h4>
-        </div>
-        <div style="padding: 20px;">
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
-            <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-              <div style="font-size: 32px; font-weight: bold; color: #4CAF50;">${filteredPenjualan.length}</div>
-              <div style="color: #666; margin-top: 5px;">Transaksi Penjualan</div>
-            </div>
-            <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-              <div style="font-size: 32px; font-weight: bold; color: #f44336;">${filteredPengeluaran.length}</div>
-              <div style="color: #666; margin-top: 5px;">Transaksi Pengeluaran</div>
-            </div>
-            <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-              <div style="font-size: 32px; font-weight: bold; color: #2196F3;">${filteredPendapatanLain.length}</div>
-              <div style="color: #666; margin-top: 5px;">Pendapatan Lain</div>
-            </div>
-            <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-              <div style="font-size: 32px; font-weight: bold; color: #9C27B0;">${filteredPartisipasi.length}</div>
-              <div style="color: #666; margin-top: 5px;">Partisipasi Anggota</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    // Render chart setelah DOM ready
-    setTimeout(() => {
-      renderTrenBulananChart(dataPerBulan);
-    }, 100);
-    
-  } catch (error) {
-    laporanContent.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
-  }
-};
-
-// Render chart tren bulanan
-window.renderTrenBulananChart = function(data) {
-  const canvas = document.getElementById('trenBulananChart');
-  if (!canvas) return;
-  
-  const ctx = canvas.getContext('2d');
-  const width = canvas.width;
-  const height = canvas.height;
-  
-  // Clear canvas
-  ctx.clearRect(0, 0, width, height);
-  
-  // Setup
-  const padding = 60;
-  const chartWidth = width - 2 * padding;
-  const chartHeight = height - 2 * padding;
-  
-  // Find max value for scaling
-  const maxValue = Math.max(...data.map(d => Math.max(d.penjualan, d.pengeluaran, d.pendapatanLain)));
-  const scale = chartHeight / (maxValue * 1.1);
-  
-  // Draw grid lines
-  ctx.strokeStyle = '#e0e0e0';
-  ctx.lineWidth = 1;
-  for (let i = 0; i <= 10; i++) {
-    const y = padding + (chartHeight * i / 10);
-    ctx.beginPath();
-    ctx.moveTo(padding, y);
-    ctx.lineTo(padding + chartWidth, y);
-    ctx.stroke();
-  }
-  
-  // Draw month labels
-  ctx.fillStyle = '#666';
-  ctx.font = '12px Arial';
-  ctx.textAlign = 'center';
-  data.forEach((d, i) => {
-    const x = padding + (chartWidth * i / (data.length - 1));
-    ctx.fillText(d.bulan, x, height - 20);
-  });
-  
-  // Draw value labels
-  ctx.textAlign = 'right';
-  for (let i = 0; i <= 5; i++) {
-    const value = (maxValue * i / 5);
-    const y = padding + chartHeight - (chartHeight * i / 5);
-    ctx.fillText(formatCurrency(value), padding - 10, y + 4);
-  }
-  
-  // Draw lines
-  const drawLine = (values, color) => {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    values.forEach((value, i) => {
-      const x = padding + (chartWidth * i / (values.length - 1));
-      const y = padding + chartHeight - (value * scale);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-    
-    // Draw points
-    ctx.fillStyle = color;
-    values.forEach((value, i) => {
-      const x = padding + (chartWidth * i / (values.length - 1));
-      const y = padding + chartHeight - (value * scale);
-      ctx.beginPath();
-      ctx.arc(x, y, 4, 0, 2 * Math.PI);
-      ctx.fill();
-    });
-  };
-  
-  // Draw lines for each category
-  drawLine(data.map(d => d.penjualan), '#4CAF50');
-  drawLine(data.map(d => d.pengeluaran), '#f44336');
-  drawLine(data.map(d => d.pendapatanLain), '#2196F3');
-  
-  // Draw legend
-  const legend = [
-    { label: 'Penjualan', color: '#4CAF50' },
-    { label: 'Pengeluaran', color: '#f44336' },
-    { label: 'Pendapatan Lain', color: '#2196F3' }
-  ];
-  
-  ctx.font = '14px Arial';
-  legend.forEach((item, i) => {
-    const x = padding + 20;
-    const y = padding + 20 + (i * 25);
-    
-    // Draw color box
-    ctx.fillStyle = item.color;
-    ctx.fillRect(x, y - 10, 15, 15);
-    
-    // Draw label
-    ctx.fillStyle = '#333';
-    ctx.textAlign = 'left';
-    ctx.fillText(item.label, x + 25, y + 2);
-  });
 };
 
 // Cetak Laporan
@@ -5131,10 +4668,6 @@ async function cetakBukuKasFromLaporan(periode, tahun, bulan, tanggal) {
     } else if (periode === 'bulanan' && bulan) {
       const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
       periodeText = `${namaBulan[parseInt(bulan) - 1]} ${tahun}`;
-    } else if (periode === 'tahunan') {
-      periodeText = `Tahun ${tahun}`;
-    } else if (periode === 'seluruh') {
-      periodeText = `Seluruh Data`;
     } else {
       periodeText = `Tahun ${tahun}`;
     }
@@ -5341,7 +4874,92 @@ window.renderPengaturan = async function() {
   // Cek apakah user adalah kasir
   const isKasir = currentUser.role === 'Kasir';
   
+  const currentYear = new Date().getFullYear();
+  const tahunPembukuan = koperasiInfo.tahun_pembukuan_aktif || currentYear;
+  const tanggalMulai = koperasiInfo.tanggal_mulai_pembukuan || `${currentYear}-01-01`;
+  const tanggalAkhir = koperasiInfo.tanggal_akhir_pembukuan || `${currentYear}-12-31`;
+  const statusPembukuan = koperasiInfo.status_pembukuan || 'aktif';
+  
   contentArea.innerHTML = `
+    <!-- Tahun Pembukuan Section -->
+    <div class="card" style="margin-bottom: 24px;">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i data-feather="calendar"></i> Tahun Pembukuan
+        </h3>
+      </div>
+      
+      <div class="card-body">
+        <div style="background: linear-gradient(135deg, #E8F5E9, #C8E6C9); padding: 20px; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid #4CAF50;">
+          <div style="display: flex; align-items: start; gap: 15px;">
+            <i data-feather="info" style="color: #2E7D32; width: 24px; height: 24px; flex-shrink: 0; margin-top: 2px;"></i>
+            <div>
+              <h4 style="margin: 0 0 10px 0; color: #2E7D32; font-size: 16px;">Informasi Tahun Pembukuan</h4>
+              <p style="margin: 0; color: #555; line-height: 1.6;">
+                Tahun pembukuan digunakan untuk mengelola periode akuntansi koperasi. 
+                Semua transaksi, laporan keuangan, dan perhitungan SHU akan mengacu pada tahun pembukuan yang aktif.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px;">
+          <div style="background: white; padding: 20px; border-radius: 8px; border: 2px solid #e0e0e0;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+              <div style="background: #4CAF50; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <i data-feather="calendar" style="color: white; width: 24px; height: 24px;"></i>
+              </div>
+              <div>
+                <p style="margin: 0; color: #666; font-size: 13px;">Tahun Aktif</p>
+                <h3 style="margin: 0; color: #2E7D32; font-size: 28px; font-weight: 700;">${tahunPembukuan}</h3>
+              </div>
+            </div>
+          </div>
+          
+          <div style="background: white; padding: 20px; border-radius: 8px; border: 2px solid #e0e0e0;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+              <div style="background: ${statusPembukuan === 'aktif' ? '#4CAF50' : '#FF9800'}; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <i data-feather="${statusPembukuan === 'aktif' ? 'check-circle' : 'lock'}" style="color: white; width: 24px; height: 24px;"></i>
+              </div>
+              <div>
+                <p style="margin: 0; color: #666; font-size: 13px;">Status</p>
+                <h3 style="margin: 0; color: ${statusPembukuan === 'aktif' ? '#2E7D32' : '#FF9800'}; font-size: 20px; font-weight: 700; text-transform: capitalize;">${statusPembukuan}</h3>
+              </div>
+            </div>
+          </div>
+          
+          <div style="background: white; padding: 20px; border-radius: 8px; border: 2px solid #e0e0e0;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+              <div style="background: #2196F3; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <i data-feather="clock" style="color: white; width: 24px; height: 24px;"></i>
+              </div>
+              <div>
+                <p style="margin: 0; color: #666; font-size: 13px;">Periode</p>
+                <p style="margin: 0; color: #333; font-size: 14px; font-weight: 600;">${formatDate(tanggalMulai)} - ${formatDate(tanggalAkhir)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <button class="btn btn-primary" onclick="editTahunPembukuan()">
+            <i data-feather="edit"></i> Edit Tahun Pembukuan
+          </button>
+          ${statusPembukuan === 'aktif' ? `
+          <button class="btn btn-warning" onclick="tutupBuku()">
+            <i data-feather="lock"></i> Tutup Buku Tahun ${tahunPembukuan}
+          </button>
+          ` : ''}
+          <button class="btn btn-success" onclick="bukaTahunBaru()">
+            <i data-feather="plus-circle"></i> Buka Tahun Baru
+          </button>
+          <button class="btn btn-info" onclick="lihatHistoryTahunPembukuan()">
+            <i data-feather="book-open"></i> Lihat History Tahun Pembukuan
+          </button>
+        </div>
+      </div>
+    </div>
+    
     <!-- Manajemen User Section -->
     <div class="card">
       <div class="card-header">
@@ -7890,9 +7508,401 @@ console.log('=== APPROVAL SIMPANAN FUNCTIONS LOADED ===');
 // ===== TAHUN PEMBUKUAN FUNCTIONS =====
 
 // Edit Tahun Pembukuan
+window.editTahunPembukuan = async function() {
+  const koperasiInfo = await API.get('/api/koperasi-info');
+  const currentYear = new Date().getFullYear();
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal active';
+  modal.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Tahun Pembukuan</h3>
+        <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
+      </div>
+      <form id="editTahunPembukuanForm">
+      <div class="form-group">
+        <label>Tahun Pembukuan Aktif *</label>
+        <input type="number" 
+               name="tahun_pembukuan_aktif" 
+               value="${koperasiInfo.tahun_pembukuan_aktif || currentYear}" 
+               required 
+               min="2000" 
+               max="2100"
+               style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tanggal Mulai Pembukuan *</label>
+          <input type="date" 
+                 name="tanggal_mulai_pembukuan" 
+                 value="${koperasiInfo.tanggal_mulai_pembukuan || `${currentYear}-01-01`}" 
+                 required
+                 style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
+        </div>
+        <div class="form-group">
+          <label>Tanggal Akhir Pembukuan *</label>
+          <input type="date" 
+                 name="tanggal_akhir_pembukuan" 
+                 value="${koperasiInfo.tanggal_akhir_pembukuan || `${currentYear}-12-31`}" 
+                 required
+                 style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>Status Pembukuan *</label>
+        <select name="status_pembukuan" required style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
+          <option value="aktif" ${koperasiInfo.status_pembukuan === 'aktif' ? 'selected' : ''}>Aktif</option>
+          <option value="tutup" ${koperasiInfo.status_pembukuan === 'tutup' ? 'selected' : ''}>Tutup</option>
+        </select>
+      </div>
+      
+      <div style="background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107; margin-bottom: 20px;">
+        <p style="margin: 0; color: #856404; font-size: 14px;">
+          <i data-feather="alert-triangle" style="width: 16px; height: 16px;"></i>
+          <strong>Perhatian:</strong> Perubahan tahun pembukuan akan mempengaruhi semua laporan dan perhitungan keuangan.
+        </p>
+      </div>
+      
+        <div class="btn-group">
+          <button type="submit" class="btn btn-primary">
+            <i data-feather="save"></i> Simpan
+          </button>
+          <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">
+            <i data-feather="x"></i> Batal
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  feather.replace();
+  
+  document.getElementById('editTahunPembukuanForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData);
+    
+    try {
+      await API.put('/api/koperasi-info/1', data);
+      alert('Tahun pembukuan berhasil diupdate!');
+      modal.remove();
+      renderPengaturan();
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+  });
+};
+
 // Tutup Buku
+window.tutupBuku = async function() {
+  const koperasiInfo = await API.get('/api/koperasi-info');
+  const tahun = koperasiInfo.tahun_pembukuan_aktif || new Date().getFullYear();
+  const tanggalMulai = koperasiInfo.tanggal_mulai_pembukuan;
+  const tanggalAkhir = koperasiInfo.tanggal_akhir_pembukuan;
+  
+  if (!confirm(`Apakah Anda yakin ingin menutup buku tahun ${tahun}?\n\nSetelah ditutup, data akan disimpan ke history dan tahun ini tidak dapat diubah lagi.`)) {
+    return;
+  }
+  
+  try {
+    // Save to history with basic info (totals will be calculated by backend if needed)
+    await API.post('/api/tahun-pembukuan/close', {
+      tahun,
+      tanggal_mulai: tanggalMulai,
+      tanggal_akhir: tanggalAkhir,
+      totals: {
+        simpanan_pokok: 0,
+        simpanan_wajib: 0,
+        simpanan_khusus: 0,
+        simpanan_sukarela: 0,
+        partisipasi: 0,
+        shu: 0
+      },
+      catatan: `Tutup buku tahun ${tahun}`
+    });
+    
+    // Update status
+    await API.put('/api/koperasi-info/1', {
+      status_pembukuan: 'tutup'
+    });
+    
+    alert(`Buku tahun ${tahun} berhasil ditutup dan disimpan ke history!`);
+    renderPengaturan();
+  } catch (error) {
+    console.error('Error tutup buku:', error);
+    alert('Error: ' + (error.message || 'Terjadi kesalahan saat menutup buku'));
+  }
+};
+
 // Buka Tahun Baru
+window.bukaTahunBaru = async function() {
+  const koperasiInfo = await API.get('/api/koperasi-info');
+  const tahunSekarang = koperasiInfo.tahun_pembukuan_aktif || new Date().getFullYear();
+  const tahunBaru = tahunSekarang + 1;
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal active';
+  modal.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Buka Tahun Pembukuan Baru</h3>
+        <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
+      </div>
+      <form id="bukaTahunBaruForm">
+      <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; border-left: 4px solid #2196f3; margin-bottom: 20px;">
+        <p style="margin: 0 0 10px 0; color: #1976d2; font-size: 16px; font-weight: 600;">
+          <i data-feather="info" style="width: 20px; height: 20px;"></i>
+          Membuka Tahun Pembukuan Baru
+        </p>
+        <p style="margin: 0; color: #555; font-size: 14px; line-height: 1.6;">
+          Sistem akan membuka tahun pembukuan baru dan menutup tahun sebelumnya (${tahunSekarang}).
+          Pastikan semua transaksi tahun ${tahunSekarang} sudah lengkap sebelum melanjutkan.
+        </p>
+      </div>
+      
+      <div class="form-group">
+        <label>Tahun Pembukuan Baru *</label>
+        <input type="number" 
+               name="tahun_pembukuan_aktif" 
+               value="${tahunBaru}" 
+               required 
+               min="${tahunBaru}" 
+               max="2100"
+               style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tanggal Mulai *</label>
+          <input type="date" 
+                 name="tanggal_mulai_pembukuan" 
+                 value="${tahunBaru}-01-01" 
+                 required
+                 style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
+        </div>
+        <div class="form-group">
+          <label>Tanggal Akhir *</label>
+          <input type="date" 
+                 name="tanggal_akhir_pembukuan" 
+                 value="${tahunBaru}-12-31" 
+                 required
+                 style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;">
+        </div>
+      </div>
+      
+      <div style="background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107; margin-bottom: 20px;">
+        <p style="margin: 0; color: #856404; font-size: 14px;">
+          <i data-feather="alert-triangle" style="width: 16px; height: 16px;"></i>
+          <strong>Perhatian:</strong> Tahun ${tahunSekarang} akan otomatis ditutup dan tidak dapat diubah lagi.
+        </p>
+      </div>
+      
+        <div class="btn-group">
+          <button type="submit" class="btn btn-success">
+            <i data-feather="check"></i> Buka Tahun Baru
+          </button>
+          <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">
+            <i data-feather="x"></i> Batal
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  feather.replace();
+  
+  document.getElementById('bukaTahunBaruForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData);
+    data.status_pembukuan = 'aktif';
+    
+    if (!confirm(`Konfirmasi: Buka tahun pembukuan ${data.tahun_pembukuan_aktif} dan tutup tahun ${tahunSekarang}?`)) {
+      return;
+    }
+    
+    try {
+      await API.put('/api/koperasi-info/1', data);
+      alert(`Tahun pembukuan ${data.tahun_pembukuan_aktif} berhasil dibuka!`);
+      modal.remove();
+      renderPengaturan();
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+  });
+};
+
 console.log('=== TAHUN PEMBUKUAN FUNCTIONS LOADED ===');
 
 
+// Lihat History Tahun Pembukuan
+window.lihatHistoryTahunPembukuan = async function() {
+  try {
+    const history = await API.get('/api/tahun-pembukuan/history');
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.innerHTML = `
+      <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header">
+          <h3 class="modal-title">History Tahun Pembukuan</h3>
+          <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
+        </div>
+        
+        <div style="padding: 20px;">
+          ${history.length === 0 ? `
+            <div style="text-align: center; padding: 40px; color: #999;">
+              <i data-feather="inbox" style="width: 48px; height: 48px; margin-bottom: 16px;"></i>
+              <p>Belum ada history tahun pembukuan</p>
+            </div>
+          ` : `
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tahun</th>
+                    <th>Periode</th>
+                    <th>Status</th>
+                    <th>Total Simpanan</th>
+                    <th>Total Partisipasi</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${history.map(item => {
+                    const totalSimpanan = (item.total_simpanan_pokok || 0) + 
+                                         (item.total_simpanan_wajib || 0) + 
+                                         (item.total_simpanan_khusus || 0) + 
+                                         (item.total_simpanan_sukarela || 0);
+                    return `
+                      <tr>
+                        <td><strong>${item.tahun}</strong></td>
+                        <td>${formatDate(item.tanggal_mulai)} - ${formatDate(item.tanggal_akhir)}</td>
+                        <td>
+                          <span class="badge badge-${item.status === 'aktif' ? 'success' : 'warning'}">
+                            ${item.status}
+                          </span>
+                        </td>
+                        <td>${formatCurrency(totalSimpanan)}</td>
+                        <td>${formatCurrency(item.total_partisipasi || 0)}</td>
+                        <td>
+                          <button class="btn btn-sm btn-info" onclick="lihatDetailTahun(${item.tahun})">
+                            <i data-feather="eye"></i> Detail
+                          </button>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          `}
+          
+          <div style="margin-top: 20px; text-align: right;">
+            <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">
+              <i data-feather="x"></i> Tutup
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    feather.replace();
+  } catch (error) {
+    alert('Error: ' + error.message);
+  }
+};
 
+// Lihat Detail Tahun
+window.lihatDetailTahun = async function(tahun) {
+  try {
+    const detail = await API.get(`/api/tahun-pembukuan/${tahun}`);
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.innerHTML = `
+      <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+          <h3 class="modal-title">Detail Tahun Pembukuan ${tahun}</h3>
+          <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
+        </div>
+        
+        <div style="padding: 20px;">
+          <div style="background: linear-gradient(135deg, #E8F5E9, #C8E6C9); padding: 20px; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid #4CAF50;">
+            <h4 style="margin: 0 0 10px 0; color: #2E7D32;">Informasi Periode</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <p style="margin: 0; color: #666; font-size: 13px;">Tanggal Mulai</p>
+                <p style="margin: 0; color: #2E7D32; font-weight: 600;">${formatDate(detail.tanggal_mulai)}</p>
+              </div>
+              <div>
+                <p style="margin: 0; color: #666; font-size: 13px;">Tanggal Akhir</p>
+                <p style="margin: 0; color: #2E7D32; font-weight: 600;">${formatDate(detail.tanggal_akhir)}</p>
+              </div>
+            </div>
+          </div>
+          
+          <h4 style="margin: 20px 0 15px 0; color: #333;">Ringkasan Keuangan</h4>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+            <div style="background: white; padding: 15px; border-radius: 8px; border: 2px solid #e0e0e0;">
+              <p style="margin: 0 0 5px 0; color: #666; font-size: 13px;">Simpanan Pokok</p>
+              <p style="margin: 0; color: #2E7D32; font-size: 18px; font-weight: 700;">${formatCurrency(detail.total_simpanan_pokok || 0)}</p>
+            </div>
+            <div style="background: white; padding: 15px; border-radius: 8px; border: 2px solid #e0e0e0;">
+              <p style="margin: 0 0 5px 0; color: #666; font-size: 13px;">Simpanan Wajib</p>
+              <p style="margin: 0; color: #2E7D32; font-size: 18px; font-weight: 700;">${formatCurrency(detail.total_simpanan_wajib || 0)}</p>
+            </div>
+            <div style="background: white; padding: 15px; border-radius: 8px; border: 2px solid #e0e0e0;">
+              <p style="margin: 0 0 5px 0; color: #666; font-size: 13px;">Simpanan Khusus</p>
+              <p style="margin: 0; color: #2E7D32; font-size: 18px; font-weight: 700;">${formatCurrency(detail.total_simpanan_khusus || 0)}</p>
+            </div>
+            <div style="background: white; padding: 15px; border-radius: 8px; border: 2px solid #e0e0e0;">
+              <p style="margin: 0 0 5px 0; color: #666; font-size: 13px;">Simpanan Sukarela</p>
+              <p style="margin: 0; color: #2E7D32; font-size: 18px; font-weight: 700;">${formatCurrency(detail.total_simpanan_sukarela || 0)}</p>
+            </div>
+          </div>
+          
+          <div style="background: linear-gradient(135deg, #E3F2FD, #BBDEFB); padding: 20px; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid #2196F3;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+              <div>
+                <p style="margin: 0 0 5px 0; color: #1976D2; font-size: 13px;">Total Partisipasi</p>
+                <p style="margin: 0; color: #1976D2; font-size: 20px; font-weight: 700;">${formatCurrency(detail.total_partisipasi || 0)}</p>
+              </div>
+              <div>
+                <p style="margin: 0 0 5px 0; color: #1976D2; font-size: 13px;">Total SHU</p>
+                <p style="margin: 0; color: #1976D2; font-size: 20px; font-weight: 700;">${formatCurrency(detail.total_shu || 0)}</p>
+              </div>
+            </div>
+          </div>
+          
+          ${detail.catatan ? `
+            <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+              <p style="margin: 0 0 5px 0; color: #666; font-size: 13px; font-weight: 600;">Catatan:</p>
+              <p style="margin: 0; color: #333;">${detail.catatan}</p>
+            </div>
+          ` : ''}
+          
+          <div style="text-align: right;">
+            <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">
+              <i data-feather="x"></i> Tutup
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    feather.replace();
+  } catch (error) {
+    alert('Error: ' + error.message);
+  }
+};
+
+console.log('=== TAHUN PEMBUKUAN HISTORY FUNCTIONS LOADED ===');

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Simple Functions</title>
+</head>
+<body>
+    <h1>Test Simple Functions</h1>
+    
+    <div style="margin: 20px 0;">
+        <button onclick="testFunction()" style="padding: 10px; margin: 5px;">Test Function</button>
+        <button onclick="cetakStruk(123, 'pokok')" style="padding: 10px; margin: 5px;">Test Cetak Struk</button>
+        <button onclick="cetakStrukPengeluaran(456)" style="padding: 10px; margin: 5px;">Test Cetak Pengeluaran</button>
+        <button onclick="cetakStrukPendapatanLain(789)" style="padding: 10px; margin: 5px;">Test Cetak Pendapatan</button>
+    </div>
+    
+    <div style="margin: 20px 0;">
+        <button onclick="checkFunctions()" style="padding: 10px; background: #007bff; color: white;">Check All Functions</button>
+    </div>
+    
+    <div id="results" style="margin: 20px 0; padding: 10px; background: #f8f9fa; border: 1px solid #ddd;"></div>
+    
+    <!-- Load simple utils -->
+    <script src="js/utils-simple.js"></script>
+    
+    <script>
+        function checkFunctions() {
+            const results = document.getElementById('results');
+            let html = '<h3>Function Check Results:</h3>';
+            
+            const functions = [
+                'testFunction',
+                'cetakStruk', 
+                'cetakStrukPengeluaran',
+                'cetakStrukPendapatanLain'
+            ];
+            
+            functions.forEach(func => {
+                const exists = typeof window[func] === 'function';
+                const status = exists ? '✅ Available' : '❌ Not Found';
+                const color = exists ? 'green' : 'red';
+                html += `<div style="color: ${color};">${func}: ${status}</div>`;
+            });
+            
+            results.innerHTML = html;
+        }
+        
+        // Auto-check on load
+        window.onload = function() {
+            setTimeout(checkFunctions, 500);
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug SHU 2025 - Advanced Diagnostics</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .info { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; color: #856404; }
+        .danger { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .debug-box { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; margin: 10px 0; font-family: monospace; font-size: 14px; }
+        .step { background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; margin: 10px 0; }
+        .checklist { list-style: none; padding: 0; }
+        .checklist li { padding: 8px 0; border-bottom: 1px solid #eee; }
+        .checklist li:before { content: "❌ "; color: #dc3545; font-weight: bold; }
+        .checklist li.check:before { content: "✅ "; color: #28a745; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-danger { background: #dc3545; color: white; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f8f9fa; font-weight: bold; }
+        .highlight { background: #fff3cd; padding: 2px 4px; border-radius: 3px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug SHU 2025 - Advanced Diagnostics</h1>
+        
+        <div class="test-section danger">
+            <h3>🚨 Status: SHU Masih 0 Setelah Fix Tahun Pembukuan</h3>
+            <p><strong>Situasi:</strong> Tahun pembukuan sudah diubah, tapi SHU 2025 masih menghasilkan 0</p>
+            <p><strong>Langkah Selanjutnya:</strong> Diagnosa mendalam untuk menemukan akar masalah</p>
+        </div>
+
+        <div class="test-section info">
+            <h3>📋 Langkah Diagnosa Sistematis</h3>
+            
+            <div class="step">
+                <h4>Langkah 1: Periksa Data Transaksi 2025</h4>
+                <p>Buka menu berikut dan catat hasilnya:</p>
+                <ul>
+                    <li><strong>Menu Transaksi → Penjualan</strong> (filter tahun 2025)</li>
+                    <li><strong>Menu Transaksi → Pendapatan Lain</strong> (filter tahun 2025)</li>
+                    <li><strong>Menu Transaksi → Pengeluaran</strong> (filter tahun 2025)</li>
+                </ul>
+                <div class="debug-box">
+<strong>Catat di sini:</strong>
+- Jumlah transaksi penjualan 2025: _____ transaksi
+- Total penjualan 2025: Rp _____________
+- Jumlah pendapatan lain 2025: _____ transaksi  
+- Total pendapatan lain 2025: Rp _____________
+- Jumlah pengeluaran 2025: _____ transaksi
+- Total pengeluaran 2025: Rp _____________
+                </div>
+            </div>
+
+            <div class="step">
+                <h4>Langkah 2: Periksa Setting Tahun Pembukuan</h4>
+                <p>Buka <strong>Menu Pengaturan</strong> dan konfirmasi:</p>
+                <div class="debug-box">
+<strong>Setting saat ini:</strong>
+- Tahun Pembukuan Aktif: _____ (harus 2025)
+- Status: _____ (harus Aktif)
+- Periode: _____ s/d _____ (harus 2025-01-01 s/d 2025-12-31)
+                </div>
+            </div>
+
+            <div class="step">
+                <h4>Langkah 3: Periksa Komponen SHU</h4>
+                <p>Buka <strong>Menu SHU</strong> → pilih tahun 2025 → klik "Atur Komponen SHU":</p>
+                <div class="debug-box">
+<strong>Komponen SHU 2025:</strong>
+- Cadangan: _____%
+- Jasa Simpanan: _____%
+- Jasa Transaksi: _____%
+- Pengurus & Pengawas: _____%
+- Pegawai: _____%
+- Dana Pendidikan: _____%
+- Dana Sosial: _____%
+- Dana Pengembangan: _____%
+- <strong>TOTAL: _____%</strong> (harus 100%)
+                </div>
+            </div>
+
+            <div class="step">
+                <h4>Langkah 4: Periksa Data Simpanan Anggota</h4>
+                <p>Buka menu <strong>Simpanan</strong> dan periksa:</p>
+                <div class="debug-box">
+<strong>Data Simpanan 2025:</strong>
+- Simpanan Pokok: _____ anggota, Total: Rp _____________
+- Simpanan Wajib: _____ anggota, Total: Rp _____________
+- Simpanan Khusus: _____ anggota, Total: Rp _____________
+- Simpanan Sukarela: _____ anggota, Total: Rp _____________
+                </div>
+            </div>
+
+            <div class="step">
+                <h4>Langkah 5: Periksa Console Browser</h4>
+                <p>Tekan <strong>F12</strong> → tab <strong>Console</strong> → klik "Hitung SHU" → catat error:</p>
+                <div class="debug-box">
+<strong>Error Messages:</strong>
+(Copy paste error messages dari console di sini)
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section warning">
+            <h3>🔧 Kemungkinan Penyebab & Solusi</h3>
+            
+            <h4>Penyebab 1: Tidak Ada Data Transaksi 2025</h4>
+            <div class="debug-box">
+<strong>Gejala:</strong> Semua menu transaksi kosong untuk tahun 2025
+<strong>Solusi:</strong> 
+1. Input data penjualan tahun 2025
+2. Input data pendapatan lain tahun 2025
+3. Input data pengeluaran tahun 2025
+4. Pastikan tanggal transaksi benar (tahun 2025)
+            </div>
+
+            <h4>Penyebab 2: Data Ada Tapi tahun_pembukuan Salah</h4>
+            <div class="debug-box">
+<strong>Gejala:</strong> Ada data transaksi tapi SHU tetap 0
+<strong>Kemungkinan:</strong> Data memiliki tahun_pembukuan = NULL atau != 2025
+<strong>Solusi:</strong> 
+1. Buka Developer Tools (F12)
+2. Tab Console → ketik: 
+   console.log('Checking data...')
+3. Periksa response API saat klik "Hitung SHU"
+            </div>
+
+            <h4>Penyebab 3: Biaya Operasional ≥ Total Pendapatan</h4>
+            <div class="debug-box">
+<strong>Rumus SHU:</strong> 
+SHU = (Total Penjualan + Total Pendapatan Lain) - Biaya Operasional
+
+<strong>Jika hasil ≤ 0, maka SHU = 0</strong>
+
+<strong>Contoh Masalah:</strong>
+- Total Penjualan: Rp 100,000,000
+- Total Pendapatan Lain: Rp 10,000,000
+- Total Pendapatan: Rp 110,000,000
+- Biaya Operasional: Rp 120,000,000
+- SHU = 110,000,000 - 120,000,000 = -10,000,000 → Dianggap 0
+            </div>
+
+            <h4>Penyebab 4: Komponen SHU Belum Diatur</h4>
+            <div class="debug-box">
+<strong>Gejala:</strong> Total persentase komponen SHU ≠ 100%
+<strong>Solusi:</strong>
+1. Menu SHU → pilih tahun 2025
+2. Klik "Atur Komponen SHU"
+3. Set persentase total = 100%
+4. Contoh: Cadangan 40%, Jasa Simpanan 25%, Jasa Transaksi 15%, dll
+5. Simpan komponen
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🧮 Kalkulator Manual SHU</h3>
+            <p>Hitung manual berdasarkan data yang Anda temukan:</p>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Komponen</th>
+                        <th>Jumlah (Rp)</th>
+                        <th>Keterangan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Total Penjualan 2025</td>
+                        <td>_____________</td>
+                        <td>Dari menu Transaksi → Penjualan</td>
+                    </tr>
+                    <tr>
+                        <td>Total Pendapatan Lain 2025</td>
+                        <td>_____________</td>
+                        <td>Dari menu Transaksi → Pendapatan Lain</td>
+                    </tr>
+                    <tr style="background: #e8f5e9;">
+                        <td><strong>TOTAL PENDAPATAN</strong></td>
+                        <td><strong>_____________</strong></td>
+                        <td>Penjualan + Pendapatan Lain</td>
+                    </tr>
+                    <tr>
+                        <td>Total Pengeluaran 2025</td>
+                        <td>_____________</td>
+                        <td>Dari menu Transaksi → Pengeluaran</td>
+                    </tr>
+                    <tr>
+                        <td>Minus: Pembelian Barang</td>
+                        <td>_____________</td>
+                        <td>Tidak masuk biaya operasional</td>
+                    </tr>
+                    <tr>
+                        <td>Minus: Pembelian Aset</td>
+                        <td>_____________</td>
+                        <td>Tidak masuk biaya operasional</td>
+                    </tr>
+                    <tr style="background: #fff3cd;">
+                        <td><strong>BIAYA OPERASIONAL</strong></td>
+                        <td><strong>_____________</strong></td>
+                        <td>Pengeluaran - Pembelian Barang - Pembelian Aset</td>
+                    </tr>
+                    <tr style="background: #f8d7da;">
+                        <td><strong>SHU TAHUN BERJALAN</strong></td>
+                        <td><strong>_____________</strong></td>
+                        <td>Total Pendapatan - Biaya Operasional</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="debug-box">
+<strong>Analisis Hasil:</strong>
+- Jika SHU > 0: Masalah di backend/database
+- Jika SHU = 0: Pendapatan = Biaya Operasional  
+- Jika SHU < 0: Rugi (sistem set ke 0)
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 Debug Backend API</h3>
+            
+            <h4>Cara Periksa Response API:</h4>
+            <ol>
+                <li>Buka Developer Tools (F12)</li>
+                <li>Tab <strong>Network</strong></li>
+                <li>Klik "Hitung SHU" di menu SHU</li>
+                <li>Cari request ke <code>/api/shu/hitung/2025</code></li>
+                <li>Klik request tersebut → tab <strong>Response</strong></li>
+            </ol>
+
+            <div class="debug-box">
+<strong>Response yang diharapkan:</strong>
+{
+  "message": "SHU berhasil dihitung",
+  "keuntunganBersih": 150000000,
+  "totalAnggota": 50
+}
+
+<strong>Response bermasalah:</strong>
+{
+  "message": "SHU berhasil dihitung", 
+  "keuntunganBersih": 0,
+  "totalAnggota": 0
+}
+            </div>
+        </div>
+
+        <div class="test-section danger">
+            <h3>🚨 Langkah Darurat</h3>
+            
+            <h4>Jika Semua Langkah Gagal:</h4>
+            <ol>
+                <li><strong>Reset SHU 2025:</strong>
+                    <ul>
+                        <li>Menu SHU → pilih tahun 2025</li>
+                        <li>Klik "Reset SHU" (jika ada)</li>
+                        <li>Konfirmasi reset</li>
+                        <li>Hitung ulang SHU</li>
+                    </ul>
+                </li>
+                <li><strong>Periksa Data Tahun Lain:</strong>
+                    <ul>
+                        <li>Coba hitung SHU tahun 2024</li>
+                        <li>Jika berhasil → masalah di data 2025</li>
+                        <li>Jika gagal → masalah di sistem</li>
+                    </ul>
+                </li>
+                <li><strong>Input Data Test:</strong>
+                    <ul>
+                        <li>Input 1 transaksi penjualan 2025</li>
+                        <li>Input 1 transaksi pengeluaran 2025</li>
+                        <li>Hitung ulang SHU</li>
+                        <li>Jika berhasil → masalah di data existing</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <div class="test-section success">
+            <h3>📞 Bantuan Lanjutan</h3>
+            <p>Jika masalah masih berlanjut, siapkan informasi berikut:</p>
+            <ul>
+                <li>✅ Screenshot setting tahun pembukuan</li>
+                <li>✅ Screenshot data transaksi 2025</li>
+                <li>✅ Screenshot komponen SHU 2025</li>
+                <li>✅ Screenshot error console (jika ada)</li>
+                <li>✅ Hasil perhitungan manual SHU</li>
+                <li>✅ Response API /api/shu/hitung/2025</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔍 Advanced SHU Debug loaded');
+            console.log('📋 Checklist diagnosa:');
+            console.log('1. ✅ Tahun pembukuan sudah diubah');
+            console.log('2. ❓ Data transaksi 2025 ada?');
+            console.log('3. ❓ Komponen SHU sudah diatur?');
+            console.log('4. ❓ Biaya operasional vs pendapatan?');
+            console.log('5. ❓ Error di backend API?');
+            
+            // Helper function untuk debug
+            window.debugSHU = function() {
+                console.log('=== DEBUG SHU 2025 ===');
+                console.log('Silakan ikuti langkah diagnosa di halaman ini');
+                console.log('Catat semua hasil untuk analisis lebih lanjut');
+            };
+            
+            console.log('💡 Ketik debugSHU() untuk memulai debug');
+        });
+    </script>
+</body>
+</html>

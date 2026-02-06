@@ -1,21 +1,27 @@
 // Enhanced Transaksi Pages with Export/Import/Edit/Delete
+console.log('pages-transaksi.js loaded successfully');
 
 // Simpanan dengan Tile Rekap dan Fitur Lengkap
 window.renderSimpanan = async function(jenis) {
-  const simpanan = await API.get(`/api/simpanan/${jenis}`);
-  const anggota = await API.get('/api/anggota');
-  
-  const jenisLabel = {
-    'pokok': 'Simpanan Pokok',
-    'wajib': 'Simpanan Wajib',
-    'khusus': 'Simpanan Khusus',
-    'sukarela': 'Simpanan Sukarela'
-  };
-  
-  // Hitung total
-  const totalSimpanan = simpanan.reduce((sum, item) => sum + parseFloat(item.jumlah || 0), 0);
-  const totalTransaksi = simpanan.length;
-  const totalAnggota = new Set(simpanan.map(item => item.anggota_id)).size;
+  try {
+    const simpanan = await API.get(`/api/simpanan/${jenis}`);
+    const anggota = await API.get('/api/anggota');
+    
+    // Pastikan simpanan adalah array
+    const simpananData = Array.isArray(simpanan) ? simpanan : [];
+    const anggotaData = Array.isArray(anggota) ? anggota : [];
+    
+    const jenisLabel = {
+      'pokok': 'Simpanan Pokok',
+      'wajib': 'Simpanan Wajib',
+      'khusus': 'Simpanan Khusus',
+      'sukarela': 'Simpanan Sukarela'
+    };
+    
+    // Hitung total
+    const totalSimpanan = simpananData.reduce((sum, item) => sum + parseFloat(item.jumlah || 0), 0);
+    const totalTransaksi = simpananData.length;
+    const totalAnggota = new Set(simpananData.map(item => item.anggota_id)).size;
   
   contentArea.innerHTML = `
     <div class="card">
@@ -95,7 +101,7 @@ window.renderSimpanan = async function(jenis) {
             </tr>
           </thead>
           <tbody>
-            ${simpanan.map((item, index) => `
+            ${simpananData.map((item, index) => `
               <tr>
                 <td>${index + 1}</td>
                 <td>${formatDate(item.tanggal_transaksi)}</td>
@@ -133,31 +139,48 @@ window.renderSimpanan = async function(jenis) {
   `;
   
   feather.replace();
+  } catch (error) {
+    console.error('Error loading simpanan data:', error);
+    contentArea.innerHTML = `
+      <div class="alert alert-danger">
+        <i data-feather="alert-circle"></i>
+        Terjadi kesalahan saat memuat data simpanan: ${error.message}
+      </div>
+    `;
+    feather.replace();
+  }
 }
 
 // Export Simpanan
 window.exportSimpanan = async function(jenis) {
-  const simpanan = await API.get(`/api/simpanan/${jenis}`);
-  const jenisLabel = {
-    'pokok': 'Simpanan Pokok',
-    'wajib': 'Simpanan Wajib',
-    'khusus': 'Simpanan Khusus',
-    'sukarela': 'Simpanan Sukarela'
-  };
-  
-  let csv = 'No,Tanggal,No. Anggota,Nama Anggota,Jumlah,Metode Pembayaran,Keterangan\n';
-  
-  simpanan.forEach((item, index) => {
-    csv += `${index + 1},"${formatDate(item.tanggal_transaksi)}","${item.nomor_anggota}","${item.nama_lengkap}","${item.jumlah}","${item.metode_pembayaran || ''}","${item.keterangan || ''}"\n`;
-  });
-  
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `${jenis}-${new Date().toISOString().split('T')[0]}.csv`;
-  link.click();
-  
-  showNotification(`Data ${jenisLabel[jenis]} berhasil diexport`, 'success');
+  try {
+    const simpanan = await API.get(`/api/simpanan/${jenis}`);
+    const simpananData = Array.isArray(simpanan) ? simpanan : [];
+    
+    const jenisLabel = {
+      'pokok': 'Simpanan Pokok',
+      'wajib': 'Simpanan Wajib',
+      'khusus': 'Simpanan Khusus',
+      'sukarela': 'Simpanan Sukarela'
+    };
+    
+    let csv = 'No,Tanggal,No. Anggota,Nama Anggota,Jumlah,Metode Pembayaran,Keterangan\n';
+    
+    simpananData.forEach((item, index) => {
+      csv += `${index + 1},"${formatDate(item.tanggal_transaksi)}","${item.nomor_anggota}","${item.nama_lengkap}","${item.jumlah}","${item.metode_pembayaran || ''}","${item.keterangan || ''}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${jenis}-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    
+    showNotification(`Data ${jenisLabel[jenis]} berhasil diexport`, 'success');
+  } catch (error) {
+    console.error('Error exporting simpanan:', error);
+    showNotification('Gagal export data simpanan', 'error');
+  }
 };
 
 // Import Simpanan
@@ -272,14 +295,18 @@ window.prosesImportSimpanan = async function(jenis) {
 
 // Edit Simpanan
 window.editSimpanan = async function(id, jenis) {
-  const simpanan = await API.get(`/api/simpanan/${jenis}`);
-  const anggota = await API.get('/api/anggota');
-  const item = simpanan.find(s => s.id === id);
-  
-  if (!item) {
-    alert('Data tidak ditemukan');
-    return;
-  }
+  try {
+    const simpanan = await API.get(`/api/simpanan/${jenis}`);
+    const anggota = await API.get('/api/anggota');
+    
+    const simpananData = Array.isArray(simpanan) ? simpanan : [];
+    const anggotaData = Array.isArray(anggota) ? anggota : [];
+    const item = simpananData.find(s => s.id === id);
+    
+    if (!item) {
+      alert('Data tidak ditemukan');
+      return;
+    }
   
   const jenisLabel = {
     'pokok': 'Simpanan Pokok',
@@ -393,6 +420,10 @@ window.editSimpanan = async function(id, jenis) {
       alert('Terjadi kesalahan');
     }
   });
+  } catch (error) {
+    console.error('Error editing simpanan:', error);
+    alert('Gagal memuat data: ' + error.message);
+  }
 };
 
 // Hapus Simpanan
@@ -418,11 +449,15 @@ window.hapusSimpanan = async function(id, jenis) {
 
 // Partisipasi Anggota dengan Tile Rekap
 window.renderPartisipasiAnggota = async function() {
-  const partisipasi = await API.get('/api/partisipasi');
-  
-  const totalPartisipasi = partisipasi.reduce((sum, item) => sum + parseFloat(item.jumlah_transaksi || 0), 0);
-  const totalTransaksi = partisipasi.length;
-  const totalAnggota = new Set(partisipasi.map(item => item.anggota_id)).size;
+  try {
+    const partisipasi = await API.get('/api/partisipasi');
+    
+    // Pastikan partisipasi adalah array
+    const partisipasiData = Array.isArray(partisipasi) ? partisipasi : [];
+    
+    const totalPartisipasi = partisipasiData.reduce((sum, item) => sum + parseFloat(item.jumlah_transaksi || 0), 0);
+    const totalTransaksi = partisipasiData.length;
+    const totalAnggota = new Set(partisipasiData.map(item => item.anggota_id)).size;
   
   contentArea.innerHTML = `
     <div class="card">
@@ -501,7 +536,7 @@ window.renderPartisipasiAnggota = async function() {
             </tr>
           </thead>
           <tbody>
-            ${partisipasi.map((item, index) => `
+            ${partisipasiData.map((item, index) => `
               <tr>
                 <td>${index + 1}</td>
                 <td>${formatDate(item.tanggal_transaksi)}</td>
@@ -529,14 +564,26 @@ window.renderPartisipasiAnggota = async function() {
   `;
   
   feather.replace();
+  } catch (error) {
+    console.error('Error loading partisipasi data:', error);
+    contentArea.innerHTML = `
+      <div class="alert alert-danger">
+        <i data-feather="alert-circle"></i>
+        Terjadi kesalahan saat memuat data partisipasi: ${error.message}
+      </div>
+    `;
+    feather.replace();
+  }
 }
 
 window.exportPartisipasi = async function() {
-  const partisipasi = await API.get('/api/partisipasi');
+  try {
+    const partisipasi = await API.get('/api/partisipasi');
+    const partisipasiData = Array.isArray(partisipasi) ? partisipasi : [];
   
   let csv = 'No,Tanggal,No. Anggota,Nama Anggota,Unit Usaha,Jumlah Transaksi,Keterangan\n';
   
-  partisipasi.forEach((item, index) => {
+  partisipasiData.forEach((item, index) => {
     csv += `${index + 1},"${formatDate(item.tanggal_transaksi)}","${item.nomor_anggota}","${item.nama_lengkap}","${item.nama_usaha || ''}","${item.jumlah_transaksi}","${item.keterangan || ''}"\n`;
   });
   
@@ -547,13 +594,20 @@ window.exportPartisipasi = async function() {
   link.click();
   
   showNotification('Data partisipasi berhasil diexport', 'success');
+  } catch (error) {
+    console.error('Error exporting partisipasi:', error);
+    showNotification('Gagal export data partisipasi', 'error');
+  }
 };
 
 window.editPartisipasi = async function(id) {
-  const partisipasi = await API.get('/api/partisipasi');
-  const anggota = await API.get('/api/anggota');
-  const unitUsaha = await API.get('/api/unit-usaha');
-  const item = partisipasi.find(p => p.id === id);
+  try {
+    const partisipasi = await API.get('/api/partisipasi');
+    const anggota = await API.get('/api/anggota');
+    const unitUsaha = await API.get('/api/unit-usaha');
+    
+    const partisipasiData = Array.isArray(partisipasi) ? partisipasi : [];
+    const item = partisipasiData.find(p => p.id === id);
   
   if (!item) {
     alert('Data tidak ditemukan');
@@ -643,6 +697,10 @@ window.editPartisipasi = async function(id) {
       alert('Terjadi kesalahan');
     }
   });
+  } catch (error) {
+    console.error('Error editing partisipasi:', error);
+    alert('Gagal memuat data: ' + error.message);
+  }
 };
 
 window.hapusPartisipasi = async function(id) {
@@ -666,16 +724,21 @@ window.hapusPartisipasi = async function(id) {
 
 // Penjualan dengan Tile Rekap
 window.renderPenjualan = async function() {
-  const [penjualan, unitUsaha] = await Promise.all([
-    API.get('/api/transaksi/penjualan'),
-    API.get('/api/unit-usaha')
-  ]);
-  
-  const totalPenjualan = penjualan.reduce((sum, item) => sum + parseFloat(item.jumlah_penjualan || 0), 0);
-  const totalKeuntungan = penjualan.reduce((sum, item) => sum + parseFloat(item.keuntungan || 0), 0);
-  const totalTransaksi = penjualan.length;
-  
-  contentArea.innerHTML = `
+  try {
+    const [penjualan, unitUsaha] = await Promise.all([
+      API.get('/api/transaksi/penjualan'),
+      API.get('/api/unit-usaha')
+    ]);
+    
+    // Pastikan penjualan adalah array
+    const penjualanData = Array.isArray(penjualan) ? penjualan : [];
+    const unitUsahaData = Array.isArray(unitUsaha) ? unitUsaha : [];
+    
+    const totalPenjualan = penjualanData.reduce((sum, item) => sum + parseFloat(item.jumlah_penjualan || 0), 0);
+    const totalKeuntungan = penjualanData.reduce((sum, item) => sum + parseFloat(item.keuntungan || 0), 0);
+    const totalTransaksi = penjualanData.length;
+    
+    contentArea.innerHTML = `
     <div class="card">
       <div class="card-header">
         <h3 class="card-title">Hasil Penjualan</h3>
@@ -783,7 +846,7 @@ window.renderPenjualan = async function() {
             </tr>
           </thead>
           <tbody>
-            ${penjualan.map((item, index) => `
+            ${penjualanData.map((item, index) => `
               <tr>
                 <td>${index + 1}</td>
                 <td>${formatDate(item.tanggal_transaksi)}</td>
@@ -798,7 +861,7 @@ window.renderPenjualan = async function() {
                       <i data-feather="edit"></i>
                       <span class="btn-text">Edit</span>
                     </button>
-                    <button class="btn btn-sm btn-danger" onclick="hapusPenjualan(${item.id})" title="Hapus">
+                    <button class="btn btn-sm btn-danger" onclick="deletePenjualan(${item.id})" title="Hapus">
                       <i data-feather="trash-2"></i>
                       <span class="btn-text">Hapus</span>
                     </button>
@@ -813,14 +876,26 @@ window.renderPenjualan = async function() {
   `;
   
   feather.replace();
+  } catch (error) {
+    console.error('Error loading penjualan data:', error);
+    contentArea.innerHTML = `
+      <div class="alert alert-danger">
+        <i data-feather="alert-circle"></i>
+        Terjadi kesalahan saat memuat data penjualan: ${error.message}
+      </div>
+    `;
+    feather.replace();
+  }
 }
 
 window.exportPenjualan = async function() {
-  const penjualan = await API.get('/api/transaksi/penjualan');
+  try {
+    const penjualan = await API.get('/api/transaksi/penjualan');
+    const penjualanData = Array.isArray(penjualan) ? penjualan : [];
   
   let csv = 'No,Tanggal,Unit Usaha,Penjualan,HPP,Keuntungan,Keterangan\n';
   
-  penjualan.forEach((item, index) => {
+  penjualanData.forEach((item, index) => {
     csv += `${index + 1},"${formatDate(item.tanggal_transaksi)}","${item.nama_usaha || ''}","${item.jumlah_penjualan}","${item.hpp}","${item.keuntungan}","${item.keterangan || ''}"\n`;
   });
   
@@ -831,21 +906,30 @@ window.exportPenjualan = async function() {
   link.click();
   
   showNotification('Data penjualan berhasil diexport', 'success');
+  } catch (error) {
+    console.error('Error exporting penjualan:', error);
+    showNotification('Gagal export data penjualan', 'error');
+  }
 };
 
 // Pengeluaran dengan Tile Rekap dan Filter
 window.renderPengeluaran = async function() {
-  const [pengeluaran, unitUsaha] = await Promise.all([
-    API.get('/api/transaksi/pengeluaran'),
-    API.get('/api/unit-usaha')
-  ]);
-  
-  const totalPengeluaran = pengeluaran.reduce((sum, item) => sum + parseFloat(item.jumlah || 0), 0);
-  const totalTransaksi = pengeluaran.length;
-  
-  // Group by kategori
-  const byKategori = {};
-  pengeluaran.forEach(item => {
+  try {
+    const [pengeluaran, unitUsaha] = await Promise.all([
+      API.get('/api/transaksi/pengeluaran'),
+      API.get('/api/unit-usaha')
+    ]);
+    
+    // Pastikan pengeluaran adalah array
+    const pengeluaranData = Array.isArray(pengeluaran) ? pengeluaran : [];
+    const unitUsahaData = Array.isArray(unitUsaha) ? unitUsaha : [];
+    
+    const totalPengeluaran = pengeluaranData.reduce((sum, item) => sum + parseFloat(item.jumlah || 0), 0);
+    const totalTransaksi = pengeluaranData.length;
+    
+    // Group by kategori
+    const byKategori = {};
+    pengeluaranData.forEach(item => {
     if (!byKategori[item.kategori]) {
       byKategori[item.kategori] = 0;
     }
@@ -853,7 +937,7 @@ window.renderPengeluaran = async function() {
   });
   
   // Get unique categories
-  const categories = [...new Set(pengeluaran.map(item => item.kategori))];
+  const categories = [...new Set(pengeluaranData.map(item => item.kategori))];
   
   contentArea.innerHTML = `
     <div class="card">
@@ -967,7 +1051,7 @@ window.renderPengeluaran = async function() {
             </tr>
           </thead>
           <tbody>
-            ${pengeluaran.map((item, index) => `
+            ${pengeluaranData.map((item, index) => `
               <tr>
                 <td>${index + 1}</td>
                 <td>${formatDate(item.tanggal_transaksi)}</td>
@@ -997,24 +1081,40 @@ window.renderPengeluaran = async function() {
   `;
   
   feather.replace();
+  } catch (error) {
+    console.error('Error loading pengeluaran data:', error);
+    contentArea.innerHTML = `
+      <div class="alert alert-danger">
+        <i data-feather="alert-circle"></i>
+        Terjadi kesalahan saat memuat data pengeluaran: ${error.message}
+      </div>
+    `;
+    feather.replace();
+  }
 }
 
 window.exportPengeluaran = async function() {
-  const pengeluaran = await API.get('/api/transaksi/pengeluaran');
-  
-  let csv = 'No,Tanggal,Unit Usaha,Kategori,Jumlah,Keterangan\n';
-  
-  pengeluaran.forEach((item, index) => {
-    csv += `${index + 1},"${formatDate(item.tanggal_transaksi)}","${item.nama_usaha || 'Umum'}","${item.kategori}","${item.jumlah}","${item.keterangan || ''}"\n`;
-  });
-  
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `pengeluaran-${new Date().toISOString().split('T')[0]}.csv`;
-  link.click();
-  
-  showNotification('Data pengeluaran berhasil diexport', 'success');
+  try {
+    const pengeluaran = await API.get('/api/transaksi/pengeluaran');
+    const pengeluaranData = Array.isArray(pengeluaran) ? pengeluaran : [];
+    
+    let csv = 'No,Tanggal,Unit Usaha,Kategori,Jumlah,Keterangan\n';
+    
+    pengeluaranData.forEach((item, index) => {
+      csv += `${index + 1},"${formatDate(item.tanggal_transaksi)}","${item.nama_usaha || 'Umum'}","${item.kategori}","${item.jumlah}","${item.keterangan || ''}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `pengeluaran-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    
+    showNotification('Data pengeluaran berhasil diexport', 'success');
+  } catch (error) {
+    console.error('Error exporting pengeluaran:', error);
+    showNotification('Gagal export data pengeluaran', 'error');
+  }
 };
 
 // Filter functions for Pengeluaran
@@ -1041,13 +1141,18 @@ window.resetPengeluaranFilter = function() {
 }
 
 async function renderPengeluaranFiltered() {
-  const [pengeluaran, unitUsaha] = await Promise.all([
-    API.get('/api/transaksi/pengeluaran'),
-    API.get('/api/unit-usaha')
-  ]);
-  
-  let filtered = pengeluaran;
-  const filters = window.pengeluaranFilterValues;
+  try {
+    const [pengeluaran, unitUsaha] = await Promise.all([
+      API.get('/api/transaksi/pengeluaran'),
+      API.get('/api/unit-usaha')
+    ]);
+    
+    // Pastikan pengeluaran adalah array
+    const pengeluaranData = Array.isArray(pengeluaran) ? pengeluaran : [];
+    const unitUsahaData = Array.isArray(unitUsaha) ? unitUsaha : [];
+    
+    let filtered = pengeluaranData;
+    const filters = window.pengeluaranFilterValues;
   
   if (filters) {
     if (filters.kategori) {
@@ -1218,6 +1323,16 @@ async function renderPengeluaranFiltered() {
   `;
   
   feather.replace();
+  } catch (error) {
+    console.error('Error loading filtered pengeluaran data:', error);
+    contentArea.innerHTML = `
+      <div class="alert alert-danger">
+        <i data-feather="alert-circle"></i>
+        Terjadi kesalahan saat memuat data pengeluaran: ${error.message}
+      </div>
+    `;
+    feather.replace();
+  }
 }
 
 
@@ -1243,13 +1358,18 @@ window.resetPenjualanFilter = function() {
 }
 
 async function renderPenjualanFiltered() {
-  const [penjualan, unitUsaha] = await Promise.all([
-    API.get('/api/transaksi/penjualan'),
-    API.get('/api/unit-usaha')
-  ]);
-  
-  let filtered = penjualan;
-  const filters = window.penjualanFilterValues;
+  try {
+    const [penjualan, unitUsaha] = await Promise.all([
+      API.get('/api/transaksi/penjualan'),
+      API.get('/api/unit-usaha')
+    ]);
+    
+    // Pastikan penjualan adalah array
+    const penjualanData = Array.isArray(penjualan) ? penjualan : [];
+    const unitUsahaData = Array.isArray(unitUsaha) ? unitUsaha : [];
+    
+    let filtered = penjualanData;
+    const filters = window.penjualanFilterValues;
   
   if (filters) {
     if (filters.unitUsaha) {
@@ -1402,27 +1522,39 @@ async function renderPenjualanFiltered() {
   `;
   
   feather.replace();
+  } catch (error) {
+    console.error('Error loading filtered penjualan data:', error);
+    contentArea.innerHTML = `
+      <div class="alert alert-danger">
+        <i data-feather="alert-circle"></i>
+        Terjadi kesalahan saat memuat data penjualan: ${error.message}
+      </div>
+    `;
+    feather.replace();
+  }
 }
 
 
 // Pendapatan Lain dengan Tile Rekap dan Filter
 window.renderPendapatanLain = async function() {
-  const pendapatanLain = await API.get('/api/transaksi/pendapatan-lain');
-  
-  const totalPendapatan = pendapatanLain.reduce((sum, item) => sum + parseFloat(item.jumlah || 0), 0);
-  const totalTransaksi = pendapatanLain.length;
-  
-  // Group by kategori
-  const byKategori = {};
-  pendapatanLain.forEach(item => {
-    if (!byKategori[item.kategori]) {
-      byKategori[item.kategori] = 0;
-    }
-    byKategori[item.kategori] += parseFloat(item.jumlah || 0);
-  });
-  
-  // Get unique categories
-  const categories = [...new Set(pendapatanLain.map(item => item.kategori))];
+  try {
+    const pendapatanLain = await API.get('/api/transaksi/pendapatan-lain');
+    const pendapatanLainData = Array.isArray(pendapatanLain) ? pendapatanLain : [];
+    
+    const totalPendapatan = pendapatanLainData.reduce((sum, item) => sum + parseFloat(item.jumlah || 0), 0);
+    const totalTransaksi = pendapatanLainData.length;
+    
+    // Group by kategori
+    const byKategori = {};
+    pendapatanLainData.forEach(item => {
+      if (!byKategori[item.kategori]) {
+        byKategori[item.kategori] = 0;
+      }
+      byKategori[item.kategori] += parseFloat(item.jumlah || 0);
+    });
+    
+    // Get unique categories
+    const categories = [...new Set(pendapatanLainData.map(item => item.kategori))];
   
   contentArea.innerHTML = `
     <div class="card">
@@ -1530,7 +1662,7 @@ window.renderPendapatanLain = async function() {
             </tr>
           </thead>
           <tbody>
-            ${pendapatanLain.map((item, index) => `
+            ${pendapatanLainData.map((item, index) => `
               <tr>
                 <td>${index + 1}</td>
                 <td>${formatDate(item.tanggal_transaksi)}</td>
@@ -1556,24 +1688,40 @@ window.renderPendapatanLain = async function() {
   `;
   
   feather.replace();
+  } catch (error) {
+    console.error('Error loading pendapatan lain data:', error);
+    contentArea.innerHTML = `
+      <div class="alert alert-danger">
+        <i data-feather="alert-circle"></i>
+        Terjadi kesalahan saat memuat data pendapatan lain: ${error.message}
+      </div>
+    `;
+    feather.replace();
+  }
 }
 
 window.exportPendapatanLain = async function() {
-  const pendapatanLain = await API.get('/api/transaksi/pendapatan-lain');
-  
-  let csv = 'No,Tanggal,Kategori,Jumlah,Keterangan\n';
-  
-  pendapatanLain.forEach((item, index) => {
-    csv += `${index + 1},"${formatDate(item.tanggal_transaksi)}","${item.kategori}","${item.jumlah}","${item.keterangan || ''}"\n`;
-  });
-  
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `pendapatan-lain-${new Date().toISOString().split('T')[0]}.csv`;
-  link.click();
-  
-  showNotification('Data pendapatan lain berhasil diexport', 'success');
+  try {
+    const pendapatanLain = await API.get('/api/transaksi/pendapatan-lain');
+    const pendapatanLainData = Array.isArray(pendapatanLain) ? pendapatanLain : [];
+    
+    let csv = 'No,Tanggal,Kategori,Jumlah,Keterangan\n';
+    
+    pendapatanLainData.forEach((item, index) => {
+      csv += `${index + 1},"${formatDate(item.tanggal_transaksi)}","${item.kategori}","${item.jumlah}","${item.keterangan || ''}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `pendapatan-lain-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    
+    showNotification('Data pendapatan lain berhasil diexport', 'success');
+  } catch (error) {
+    console.error('Error exporting pendapatan lain:', error);
+    showNotification('Gagal export data pendapatan lain', 'error');
+  }
 };
 
 // Filter functions for Pendapatan Lain
@@ -1595,10 +1743,14 @@ window.resetPendapatanFilter = function() {
 }
 
 async function renderPendapatanFiltered() {
-  const pendapatanLain = await API.get('/api/transaksi/pendapatan-lain');
-  
-  let filtered = pendapatanLain;
-  const filters = window.pendapatanFilterValues;
+  try {
+    const pendapatanLain = await API.get('/api/transaksi/pendapatan-lain');
+    
+    // Pastikan pendapatanLain adalah array
+    const pendapatanLainData = Array.isArray(pendapatanLain) ? pendapatanLain : [];
+    
+    let filtered = pendapatanLainData;
+    const filters = window.pendapatanFilterValues;
   
   if (filters) {
     if (filters.kategori) {
@@ -1623,7 +1775,7 @@ async function renderPendapatanFiltered() {
     byKategori[item.kategori] += parseFloat(item.jumlah || 0);
   });
   
-  const categories = [...new Set(pendapatanLain.map(item => item.kategori))];
+  const categories = [...new Set(pendapatanLainData.map(item => item.kategori))];
   
   contentArea.innerHTML = `
     <div class="card">
@@ -1754,22 +1906,35 @@ async function renderPendapatanFiltered() {
   `;
   
   feather.replace();
+  } catch (error) {
+    console.error('Error loading filtered pendapatan data:', error);
+    contentArea.innerHTML = `
+      <div class="alert alert-danger">
+        <i data-feather="alert-circle"></i>
+        Terjadi kesalahan saat memuat data pendapatan lain: ${error.message}
+      </div>
+    `;
+    feather.replace();
+  }
 }
 
 
 // Cetak Simpanan
 window.cetakSimpanan = async function(jenis) {
-  const simpanan = await API.get(`/api/simpanan/${jenis}`);
-  const info = await API.get('/api/koperasi-info');
-  
-  const jenisLabel = {
-    'pokok': 'Simpanan Pokok',
-    'wajib': 'Simpanan Wajib',
-    'khusus': 'Simpanan Khusus',
-    'sukarela': 'Simpanan Sukarela'
-  };
-  
-  const totalSimpanan = simpanan.reduce((sum, item) => sum + parseFloat(item.jumlah || 0), 0);
+  try {
+    const simpanan = await API.get(`/api/simpanan/${jenis}`);
+    const info = await API.get('/api/koperasi-info');
+    
+    const simpananData = Array.isArray(simpanan) ? simpanan : [];
+    
+    const jenisLabel = {
+      'pokok': 'Simpanan Pokok',
+      'wajib': 'Simpanan Wajib',
+      'khusus': 'Simpanan Khusus',
+      'sukarela': 'Simpanan Sukarela'
+    };
+    
+    const totalSimpanan = simpananData.reduce((sum, item) => sum + parseFloat(item.jumlah || 0), 0);
   
   const printWindow = window.open('', '_blank');
   printWindow.document.write(`
@@ -1814,7 +1979,7 @@ window.cetakSimpanan = async function(jenis) {
           </tr>
         </thead>
         <tbody>
-          ${simpanan.map((item, index) => `
+          ${simpananData.map((item, index) => `
             <tr>
               <td>${index + 1}</td>
               <td>${formatDate(item.tanggal_transaksi)}</td>
@@ -1848,14 +2013,20 @@ window.cetakSimpanan = async function(jenis) {
     </html>
   `);
   printWindow.document.close();
+  } catch (error) {
+    console.error('Error printing simpanan:', error);
+    showNotification('Gagal mencetak data simpanan', 'error');
+  }
 };
 
 // Cetak Partisipasi Anggota
 window.cetakPartisipasi = async function() {
-  const partisipasi = await API.get('/api/partisipasi');
-  const info = await API.get('/api/koperasi-info');
-  
-  const totalPartisipasi = partisipasi.reduce((sum, item) => sum + parseFloat(item.jumlah_transaksi || 0), 0);
+  try {
+    const partisipasi = await API.get('/api/partisipasi');
+    const info = await API.get('/api/koperasi-info');
+    
+    const partisipasiData = Array.isArray(partisipasi) ? partisipasi : [];
+    const totalPartisipasi = partisipasiData.reduce((sum, item) => sum + parseFloat(item.jumlah_transaksi || 0), 0);
   
   const printWindow = window.open('', '_blank');
   printWindow.document.write(`
@@ -1900,7 +2071,7 @@ window.cetakPartisipasi = async function() {
           </tr>
         </thead>
         <tbody>
-          ${partisipasi.map((item, index) => `
+          ${partisipasiData.map((item, index) => `
             <tr>
               <td>${index + 1}</td>
               <td>${formatDate(item.tanggal_transaksi)}</td>
@@ -1934,16 +2105,23 @@ window.cetakPartisipasi = async function() {
     </html>
   `);
   printWindow.document.close();
+  } catch (error) {
+    console.error('Error printing partisipasi:', error);
+    showNotification('Gagal mencetak data partisipasi', 'error');
+  }
 };
 
 
 // Cetak Penjualan
 window.cetakPenjualan = async function() {
-  const penjualan = await API.get('/api/transaksi/penjualan');
-  const info = await API.get('/api/koperasi-info');
-  
-  const totalPenjualan = penjualan.reduce((sum, item) => sum + parseFloat(item.jumlah_penjualan || 0), 0);
-  const totalKeuntungan = penjualan.reduce((sum, item) => sum + parseFloat(item.keuntungan || 0), 0);
+  try {
+    const penjualan = await API.get('/api/transaksi/penjualan');
+    const info = await API.get('/api/koperasi-info');
+    
+    const penjualanData = Array.isArray(penjualan) ? penjualan : [];
+    
+    const totalPenjualan = penjualanData.reduce((sum, item) => sum + parseFloat(item.jumlah_penjualan || 0), 0);
+    const totalKeuntungan = penjualanData.reduce((sum, item) => sum + parseFloat(item.keuntungan || 0), 0);
   
   const printWindow = window.open('', '_blank');
   printWindow.document.write(`
@@ -1989,7 +2167,7 @@ window.cetakPenjualan = async function() {
           </tr>
         </thead>
         <tbody>
-          ${penjualan.map((item, index) => `
+          ${penjualanData.map((item, index) => `
             <tr>
               <td>${index + 1}</td>
               <td>${formatDate(item.tanggal_transaksi)}</td>
@@ -2030,14 +2208,21 @@ window.cetakPenjualan = async function() {
     </html>
   `);
   printWindow.document.close();
+  } catch (error) {
+    console.error('Error printing penjualan:', error);
+    showNotification('Gagal mencetak data penjualan', 'error');
+  }
 };
 
 // Cetak Pengeluaran
 window.cetakPengeluaran = async function() {
-  const pengeluaran = await API.get('/api/transaksi/pengeluaran');
-  const info = await API.get('/api/koperasi-info');
-  
-  const totalPengeluaran = pengeluaran.reduce((sum, item) => sum + parseFloat(item.jumlah || 0), 0);
+  try {
+    const pengeluaran = await API.get('/api/transaksi/pengeluaran');
+    const info = await API.get('/api/koperasi-info');
+    
+    const pengeluaranData = Array.isArray(pengeluaran) ? pengeluaran : [];
+    
+    const totalPengeluaran = pengeluaranData.reduce((sum, item) => sum + parseFloat(item.jumlah || 0), 0);
   
   const printWindow = window.open('', '_blank');
   printWindow.document.write(`
@@ -2081,7 +2266,7 @@ window.cetakPengeluaran = async function() {
           </tr>
         </thead>
         <tbody>
-          ${pengeluaran.map((item, index) => `
+          ${pengeluaranData.map((item, index) => `
             <tr>
               <td>${index + 1}</td>
               <td>${formatDate(item.tanggal_transaksi)}</td>
@@ -2114,88 +2299,100 @@ window.cetakPengeluaran = async function() {
     </html>
   `);
   printWindow.document.close();
+  } catch (error) {
+    console.error('Error printing pengeluaran:', error);
+    showNotification('Gagal mencetak data pengeluaran', 'error');
+  }
 };
 
 // Cetak Pendapatan Lain
 window.cetakPendapatanLain = async function() {
-  const pendapatanLain = await API.get('/api/transaksi/pendapatan-lain');
-  const info = await API.get('/api/koperasi-info');
+  try {
+    const pendapatanLain = await API.get('/api/transaksi/pendapatan-lain');
+    const info = await API.get('/api/koperasi-info');
+    
+    const pendapatanLainData = Array.isArray(pendapatanLain) ? pendapatanLain : [];
+    const totalPendapatan = pendapatanLainData.reduce((sum, item) => sum + parseFloat(item.jumlah || 0), 0);
   
-  const totalPendapatan = pendapatanLain.reduce((sum, item) => sum + parseFloat(item.jumlah || 0), 0);
-  
-  const printWindow = window.open('', '_blank');
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Pendapatan Lain - ${info.nama_koperasi || 'Koperasi'}</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-        .header h2 { margin: 5px 0; }
-        .header p { margin: 3px 0; font-size: 14px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 11px; }
-        th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
-        th { background-color: #2E7D32; color: white; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        .summary { margin-top: 20px; text-align: right; font-weight: bold; font-size: 14px; }
-        .footer { margin-top: 30px; font-size: 12px; text-align: right; }
-        @media print {
-          button { display: none; }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h2>${info.nama_koperasi || 'Koperasi'}</h2>
-        <p>${info.alamat || ''}</p>
-        <p>Telp: ${info.nomor_telpon || '-'} | Email: ${info.email || '-'}</p>
-        <h3 style="margin-top: 15px;">PENDAPATAN LAIN</h3>
-      </div>
-      
-      <table>
-        <thead>
-          <tr>
-            <th>No</th>
-            <th>Tanggal</th>
-            <th>Kategori</th>
-            <th>Jumlah</th>
-            <th>Keterangan</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${pendapatanLain.map((item, index) => `
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Pendapatan Lain - ${info.nama_koperasi || 'Koperasi'}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+          .header h2 { margin: 5px 0; }
+          .header p { margin: 3px 0; font-size: 14px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 11px; }
+          th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+          th { background-color: #2E7D32; color: white; }
+          tr:nth-child(even) { background-color: #f9f9f9; }
+          .summary { margin-top: 20px; text-align: right; font-weight: bold; font-size: 14px; }
+          .footer { margin-top: 30px; font-size: 12px; text-align: right; }
+          @media print {
+            button { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h2>${info.nama_koperasi || 'Koperasi'}</h2>
+          <p>${info.alamat || ''}</p>
+          <p>Telp: ${info.nomor_telpon || '-'} | Email: ${info.email || '-'}</p>
+          <h3 style="margin-top: 15px;">PENDAPATAN LAIN</h3>
+        </div>
+        
+        <table>
+          <thead>
             <tr>
-              <td>${index + 1}</td>
-              <td>${formatDate(item.tanggal_transaksi)}</td>
-              <td>${item.kategori}</td>
-              <td style="text-align: right; color: #00C9A7;"><strong>${formatCurrency(item.jumlah)}</strong></td>
-              <td>${item.keterangan || '-'}</td>
+              <th>No</th>
+              <th>Tanggal</th>
+              <th>Kategori</th>
+              <th>Jumlah</th>
+              <th>Keterangan</th>
             </tr>
-          `).join('')}
-        </tbody>
-      </table>
-      
-      <div class="summary">
-        Total Pendapatan Lain: ${formatCurrency(totalPendapatan)}
-      </div>
-      
-      <div class="footer">
-        <p>Dicetak pada: ${new Date().toLocaleString('id-ID')}</p>
-      </div>
-      
-      <div style="margin-top: 20px; text-align: center;">
-        <button onclick="window.print()" style="padding: 10px 20px; background: #2E7D32; color: white; border: none; border-radius: 5px; cursor: pointer;">
-          Cetak Dokumen
-        </button>
-        <button onclick="window.close()" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px;">
-          Tutup
-        </button>
-      </div>
-    </body>
-    </html>
-  `);
-  printWindow.document.close();
+          </thead>
+          <tbody>
+            ${pendapatanLainData.map((item, index) => `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${formatDate(item.tanggal_transaksi)}</td>
+                <td>${item.kategori}</td>
+                <td style="text-align: right; color: #00C9A7;"><strong>${formatCurrency(item.jumlah)}</strong></td>
+                <td>${item.keterangan || '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        
+        <div class="summary">
+          Total Pendapatan Lain: ${formatCurrency(totalPendapatan)}
+        </div>
+        
+        <div class="footer">
+          <p>Dicetak pada: ${new Date().toLocaleString('id-ID')}</p>
+        </div>
+        
+        <div style="margin-top: 20px; text-align: center;">
+          <button onclick="window.print()" style="padding: 10px 20px; background: #2E7D32; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            Cetak Dokumen
+          </button>
+          <button onclick="window.close()" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px;">
+            Tutup
+          </button>
+        </div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  } catch (error) {
+    console.error('Error printing pendapatan lain:', error);
+    showNotification('Gagal mencetak data pendapatan lain', 'error');
+  }
 };
 
 
+
+// End of pages-transaksi.js

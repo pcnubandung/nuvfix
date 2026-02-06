@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug QR Code Simple</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-box { margin: 20px 0; padding: 20px; border: 1px solid #ddd; background: #f9f9f9; }
+        .qr-display { width: 100px; height: 100px; border: 1px solid #ccc; margin: 10px 0; display: inline-block; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Debug QR Code Generation</h1>
+    
+    <div class="test-box">
+        <h3>Test 1: Simple Text</h3>
+        <button onclick="testSimple()">Test Simple QR</button>
+        <div id="result1"></div>
+        <div class="qr-display" id="qr1"></div>
+    </div>
+    
+    <div class="test-box">
+        <h3>Test 2: Transaction Data (Clean)</h3>
+        <button onclick="testTransaction()">Test Transaction QR</button>
+        <div id="result2"></div>
+        <div class="qr-display" id="qr2"></div>
+    </div>
+    
+    <div class="test-box">
+        <h3>Test 3: Google Charts Direct</h3>
+        <button onclick="testGoogleDirect()">Test Google Direct</button>
+        <div id="result3"></div>
+        <div class="qr-display" id="qr3"></div>
+    </div>
+    
+    <div class="test-box">
+        <h3>Test 4: QRServer Direct</h3>
+        <button onclick="testQRServerDirect()">Test QRServer Direct</button>
+        <div id="result4"></div>
+        <div class="qr-display" id="qr4"></div>
+    </div>
+    
+    <script>
+        function testSimple() {
+            const container = document.getElementById('qr1');
+            const result = document.getElementById('result1');
+            const data = 'Hello World Test';
+            
+            result.innerHTML = 'Testing simple text...';
+            
+            const img = document.createElement('img');
+            img.src = 'https://chart.googleapis.com/chart?chs=100x100&cht=qr&chl=' + encodeURIComponent(data);
+            img.style.width = '90px';
+            img.style.height = '90px';
+            
+            img.onload = function() {
+                result.innerHTML = '<span class="success">✅ Success: Simple QR generated</span>';
+                container.innerHTML = '';
+                container.appendChild(img);
+            };
+            
+            img.onerror = function() {
+                result.innerHTML = '<span class="error">❌ Failed: Simple QR failed</span>';
+            };
+        }
+        
+        function testTransaction() {
+            const container = document.getElementById('qr2');
+            const result = document.getElementById('result2');
+            const data = 'KOPERASI: NU Vibes | TRX: #000042 | ANGGOTA: NUV20250016 | JENIS: Simpanan Pokok | JUMLAH: 100000 | TGL: 2025-11-08';
+            
+            result.innerHTML = 'Testing transaction data...';
+            console.log('Transaction data:', data);
+            console.log('Data length:', data.length);
+            
+            const img = document.createElement('img');
+            const encoded = encodeURIComponent(data);
+            img.src = 'https://chart.googleapis.com/chart?chs=100x100&cht=qr&chl=' + encoded;
+            img.style.width = '90px';
+            img.style.height = '90px';
+            
+            console.log('Encoded length:', encoded.length);
+            console.log('Full URL:', img.src);
+            
+            img.onload = function() {
+                result.innerHTML = '<span class="success">✅ Success: Transaction QR generated</span>';
+                container.innerHTML = '';
+                container.appendChild(img);
+            };
+            
+            img.onerror = function() {
+                result.innerHTML = '<span class="error">❌ Failed: Transaction QR failed</span>';
+                console.error('Transaction QR failed');
+            };
+        }
+        
+        function testGoogleDirect() {
+            const container = document.getElementById('qr3');
+            const result = document.getElementById('result3');
+            
+            result.innerHTML = 'Testing Google Charts direct...';
+            
+            // Test if Google Charts is accessible
+            fetch('https://chart.googleapis.com/chart?chs=50x50&cht=qr&chl=test')
+                .then(response => {
+                    if (response.ok) {
+                        result.innerHTML = '<span class="success">✅ Success: Google Charts accessible</span>';
+                        
+                        const img = document.createElement('img');
+                        img.src = 'https://chart.googleapis.com/chart?chs=100x100&cht=qr&chl=Google%20Test';
+                        img.style.width = '90px';
+                        img.style.height = '90px';
+                        container.innerHTML = '';
+                        container.appendChild(img);
+                    } else {
+                        result.innerHTML = '<span class="error">❌ Failed: Google Charts not accessible</span>';
+                    }
+                })
+                .catch(error => {
+                    result.innerHTML = '<span class="error">❌ Failed: Network error - ' + error.message + '</span>';
+                    console.error('Google Charts test error:', error);
+                });
+        }
+        
+        function testQRServerDirect() {
+            const container = document.getElementById('qr4');
+            const result = document.getElementById('result4');
+            
+            result.innerHTML = 'Testing QRServer direct...';
+            
+            // Test if QRServer is accessible
+            fetch('https://api.qrserver.com/v1/create-qr-code/?size=50x50&data=test')
+                .then(response => {
+                    if (response.ok) {
+                        result.innerHTML = '<span class="success">✅ Success: QRServer accessible</span>';
+                        
+                        const img = document.createElement('img');
+                        img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=QRServer%20Test';
+                        img.style.width = '90px';
+                        img.style.height = '90px';
+                        container.innerHTML = '';
+                        container.appendChild(img);
+                    } else {
+                        result.innerHTML = '<span class="error">❌ Failed: QRServer not accessible</span>';
+                    }
+                })
+                .catch(error => {
+                    result.innerHTML = '<span class="error">❌ Failed: Network error - ' + error.message + '</span>';
+                    console.error('QRServer test error:', error);
+                });
+        }
+        
+        // Auto test on load
+        window.onload = function() {
+            console.log('Starting auto tests...');
+            setTimeout(function() {
+                testSimple();
+                setTimeout(testTransaction, 1000);
+                setTimeout(testGoogleDirect, 2000);
+                setTimeout(testQRServerDirect, 3000);
+            }, 500);
+        };
+    </script>
+</body>
+</html>

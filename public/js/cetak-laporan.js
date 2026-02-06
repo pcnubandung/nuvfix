@@ -104,12 +104,14 @@ window.cetakLaporanNeraca = async function(periode, tahun, bulan, tanggal) {
     const persediaan = pembelianBarang - hppBarang;
     const aktivaTetap = pembelianAset - penjualanAset;
     
-    const kasBank = totalSimpanan + labaBersih - persediaan - aktivaTetap;
-    const totalAktiva = kasBank + persediaan + aktivaTetap;
-    
-    // PASIVA
+    // PASIVA - hitung cadangan dulu
     let cadangan = 0;
     const shuTahunBerjalan = labaBersih;
+    
+    // Kas & Bank = Total Simpanan + Laba Bersih + Cadangan - Persediaan - Aktiva Tetap
+    const kasBank = totalSimpanan + labaBersih + cadangan - persediaan - aktivaTetap;
+    const totalAktiva = kasBank + persediaan + aktivaTetap;
+    
     const totalPasiva = totalSimpananPokok + totalSimpananWajib + totalSimpananKhusus + totalSukarela + cadangan + shuTahunBerjalan;
     
     // Format periode untuk tampilan

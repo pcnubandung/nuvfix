@@ -40,12 +40,16 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .logo-section {
   display: flex;
   align-items: center;
   gap: 16px;
+  flex: 1;
+  min-width: 0;
 }
 
 .logo-image-container {
@@ -83,24 +87,32 @@
   font-size: 24px;
   font-weight: 700;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .logo-info p {
   font-size: 14px;
   opacity: 0.9;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
   gap: 24px;
+  flex-shrink: 0;
 }
 
 .user-info {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .user-avatar {
@@ -130,16 +142,22 @@
 .user-details {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .user-name {
   font-weight: 600;
   font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
 }
 
 .user-role {
   font-size: 13px;
   opacity: 0.9;
+  white-space: nowrap;
 }
 
 /* Member Date Info */
@@ -765,4 +783,209 @@
 
 .camera-loading {
   animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* ===== DOWNLOAD STRUK BUTTON STYLES ===== */
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btn-sm:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-sm.btn-success {
+  background: linear-gradient(135deg, #4CAF50, #2E7D32);
+  color: white;
+}
+
+.btn-sm.btn-success:hover {
+  background: linear-gradient(135deg, #45a049, #1B5E20);
+}
+
+.btn-sm i {
+  width: 14px;
+  height: 14px;
+}
+
+/* Table action column */
+.simpanan-table th:last-child,
+.simpanan-table td:last-child {
+  width: 80px;
+  text-align: center;
+}
+
+/* Download button in table */
+.simpanan-table .btn-sm {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.simpanan-table .btn-sm i {
+  width: 12px;
+  height: 12px;
+}
+
+/* Responsive download buttons */
+@media (max-width: 768px) {
+  .simpanan-table .btn-sm {
+    padding: 6px;
+    font-size: 10px;
+  }
+  
+  .simpanan-table .btn-sm i {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .simpanan-table th:last-child,
+  .simpanan-table td:last-child {
+    width: 60px;
+  }
+}
+
+@media (max-width: 480px) {
+  .simpanan-table .btn-sm {
+    padding: 4px;
+  }
+  
+  .simpanan-table th:last-child,
+  .simpanan-table td:last-child {
+    width: 50px;
+  }
+}
+/* Re
+sponsive Design */
+@media (max-width: 768px) {
+  .header-container {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+  
+  .logo-section {
+    justify-content: center;
+  }
+  
+  .logo-info h1 {
+    font-size: 20px;
+  }
+  
+  .logo-info p {
+    font-size: 12px;
+  }
+  
+  .header-actions {
+    gap: 16px;
+    justify-content: center;
+  }
+  
+  .user-name {
+    max-width: 120px;
+    font-size: 14px;
+  }
+  
+  .user-role {
+    font-size: 12px;
+  }
+  
+  .btn-logout {
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+  
+  .member-nav {
+    top: 140px;
+  }
+  
+  .nav-container {
+    padding: 0 16px;
+  }
+  
+  .nav-item {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+  
+  .content-container {
+    padding: 0 16px;
+  }
+  
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .stat-value {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-container {
+    padding: 0 16px;
+  }
+  
+  .logo-image-container {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .logo-image-container img,
+  .logo-circle {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .logo-info h1 {
+    font-size: 18px;
+  }
+  
+  .user-avatar {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .user-avatar i {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .user-name {
+    max-width: 100px;
+    font-size: 13px;
+  }
+  
+  .btn-logout {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  
+  .btn-logout span {
+    display: none;
+  }
+  
+  .member-nav {
+    top: 120px;
+  }
+  
+  .nav-item {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  
+  .nav-item span {
+    display: none;
+  }
 }

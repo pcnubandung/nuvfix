@@ -126,8 +126,6 @@ const logActivity = (action, module, description = '') => {
   };
 };
 
-
-
 // ===== AUTH ROUTES =====
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
@@ -384,12 +382,150 @@ app.get('/api/koperasi-info', (req, res) => {
 
 // ===== TAHUN PEMBUKUAN HISTORY ROUTES =====
 
+// Get all tahun pembukuan history
+app.get('/api/tahun-pembukuan/history', authenticateToken, (req, res) => {
+  // Check if table exists first
+  db.all(`SELECT name FROM sqlite_master WHERE type='table' AND name='tahun_pembukuan_history'`, [], (err, tables) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    if (tables.length === 0) {
+      // Table doesn't exist, return empty array
+      return res.json([]);
+    }
+    
+    db.all('SELECT * FROM tahun_pembukuan_history ORDER BY tahun DESC', [], (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(rows || []);
+    });
+  });
+});
+
+// Get specific tahun pembukuan
+app.get('/api/tahun-pembukuan/:tahun', authenticateToken, (req, res) => {
+  const { tahun } = req.params;
+  
+  // Check if table exists first
+  db.all(`SELECT name FROM sqlite_master WHERE type='table' AND name='tahun_pembukuan_history'`, [], (err, tables) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    if (tables.length === 0) {
+      // Table doesn't exist, return empty object
+      return res.json({});
+    }
+    
+    db.get('SELECT * FROM tahun_pembukuan_history WHERE tahun = ?', [tahun], (err, row) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(row || {});
+    });
+  });
+});
+
+// Save tahun pembukuan to history when closing
+app.post('/api/tahun-pembukuan/close', authenticateToken, (req, res) => {
+  const { tahun, tanggal_mulai, tanggal_akhir, totals, catatan } = req.body;
+  
+  // Validate required fields
+  if (!tahun || !tanggal_mulai || !tanggal_akhir) {
+    return res.status(400).json({ error: 'Tahun, tanggal_mulai, dan tanggal_akhir harus diisi' });
+  }
+  
+  // Check if table exists, if not create it
+  db.run(`
+    CREATE TABLE IF NOT EXISTS tahun_pembukuan_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tahun INTEGER NOT NULL,
+      tanggal_mulai DATE NOT NULL,
+      tanggal_akhir DATE NOT NULL,
+      status TEXT DEFAULT 'tutup',
+      total_simpanan_pokok REAL DEFAULT 0,
+      total_simpanan_wajib REAL DEFAULT 0,
+      total_simpanan_khusus REAL DEFAULT 0,
+      total_simpanan_sukarela REAL DEFAULT 0,
+      total_partisipasi REAL DEFAULT 0,
+      total_shu REAL DEFAULT 0,
+      catatan TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `, (err) => {
+    if (err) {
+      console.error('Error creating table:', err);
+      return res.status(500).json({ error: 'Gagal membuat tabel history: ' + err.message });
+    }
+    
+    // Check if already exists
+    db.get('SELECT * FROM tahun_pembukuan_history WHERE tahun = ?', [tahun], (err, existing) => {
+      if (err) {
+        console.error('Error checking existing:', err);
+        return res.status(500).json({ error: 'Gagal mengecek data: ' + err.message });
+      }
+      
+      if (existing) {
+        // Update existing
+        db.run(`
+          UPDATE tahun_pembukuan_history 
+          SET status = 'tutup',
+              total_simpanan_pokok = ?,
+              total_simpanan_wajib = ?,
+              total_simpanan_khusus = ?,
+              total_simpanan_sukarela = ?,
+              total_partisipasi = ?,
+              total_shu = ?,
+              catatan = ?,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE tahun = ?
+        `, [
+          totals?.simpanan_pokok || 0,
+          totals?.simpanan_wajib || 0,
+          totals?.simpanan_khusus || 0,
+          totals?.simpanan_sukarela || 0,
+          totals?.partisipasi || 0,
+          totals?.shu || 0,
+          catatan || null,
+          tahun
+        ], (err) => {
+          if (err) {
+            console.error('Error updating:', err);
+            return res.status(500).json({ error: 'Gagal update history: ' + err.message });
+          }
+          res.json({ message: 'Tahun pembukuan berhasil ditutup dan disimpan ke history', success: true });
+        });
+      } else {
+        // Insert new
+        db.run(`
+          INSERT INTO tahun_pembukuan_history 
+          (tahun, tanggal_mulai, tanggal_akhir, status, total_simpanan_pokok, total_simpanan_wajib, 
+           total_simpanan_khusus, total_simpanan_sukarela, total_partisipasi, total_shu, catatan)
+          VALUES (?, ?, ?, 'tutup', ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          tahun,
+          tanggal_mulai,
+          tanggal_akhir,
+          totals?.simpanan_pokok || 0,
+          totals?.simpanan_wajib || 0,
+          totals?.simpanan_khusus || 0,
+          totals?.simpanan_sukarela || 0,
+          totals?.partisipasi || 0,
+          totals?.shu || 0,
+          catatan || null
+        ], (err) => {
+          if (err) {
+            console.error('Error inserting:', err);
+            return res.status(500).json({ error: 'Gagal simpan history: ' + err.message });
+          }
+          res.json({ message: 'Tahun pembukuan berhasil ditutup dan disimpan ke history', success: true });
+        });
+      }
+    });
+  });
+});
 
 app.put('/api/koperasi-info/:id', authenticateToken, upload.single('logo'), (req, res) => {
   const { id } = req.params;
   const { 
     nama_koperasi, alamat, nomor_telpon, email, nomor_induk_koperasi, nomor_induk_berusaha, 
-    nomor_badan_hukum, tanggal_berdiri
+    nomor_badan_hukum, tanggal_berdiri, tahun_pembukuan_aktif, tanggal_mulai_pembukuan, 
+    tanggal_akhir_pembukuan, status_pembukuan 
   } = req.body;
   const logo = req.file ? req.file.filename : null;
 
@@ -428,6 +564,22 @@ app.put('/api/koperasi-info/:id', authenticateToken, upload.single('logo'), (req
   if (tanggal_berdiri !== undefined) {
     query += ', tanggal_berdiri = ?';
     params.push(tanggal_berdiri);
+  }
+  if (tahun_pembukuan_aktif !== undefined) {
+    query += ', tahun_pembukuan_aktif = ?';
+    params.push(tahun_pembukuan_aktif);
+  }
+  if (tanggal_mulai_pembukuan !== undefined) {
+    query += ', tanggal_mulai_pembukuan = ?';
+    params.push(tanggal_mulai_pembukuan);
+  }
+  if (tanggal_akhir_pembukuan !== undefined) {
+    query += ', tanggal_akhir_pembukuan = ?';
+    params.push(tanggal_akhir_pembukuan);
+  }
+  if (status_pembukuan !== undefined) {
+    query += ', status_pembukuan = ?';
+    params.push(status_pembukuan);
   }
   if (logo) {
     query += ', logo = ?';
@@ -612,197 +764,172 @@ app.get('/api/public/stats', (req, res) => {
   });
 });
 
-app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
-  const currentYear = new Date().getFullYear();
-  console.log('Getting dashboard stats for tahun:', currentYear);
-  const stats = {};
+app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
+  try {
+    const tahunAktif = await getTahunAktif();
+    console.log('Getting dashboard stats for tahun:', tahunAktif);
+    const stats = {};
     
-  // Total Anggota (tidak perlu filter tahun)
-  db.get('SELECT COUNT(*) as total FROM anggota WHERE status = "aktif"', [], (err, row) => {
-    if (err) {
-      console.error('Error getting total anggota:', err);
-      stats.totalAnggota = 0;
-    } else {
-      stats.totalAnggota = row ? row.total : 0;
-    }
-    
-    // Total Simpanan (semua data)
-    db.get(`SELECT 
-            (SELECT COALESCE(SUM(CAST(jumlah AS REAL)), 0) FROM simpanan_pokok WHERE (status = 'approved' OR status IS NULL)) +
-            (SELECT COALESCE(SUM(CAST(jumlah AS REAL)), 0) FROM simpanan_wajib WHERE (status = 'approved' OR status IS NULL)) +
-            (SELECT COALESCE(SUM(CAST(jumlah AS REAL)), 0) FROM simpanan_khusus WHERE (status = 'approved' OR status IS NULL)) +
-            (SELECT COALESCE(SUM(CASE WHEN jenis = 'Setoran' THEN CAST(jumlah AS REAL) ELSE -CAST(jumlah AS REAL) END), 0) FROM simpanan_sukarela WHERE (status = 'approved' OR status IS NULL)) as total`, 
-            [], (err, row) => {
+    // Total Anggota (tidak perlu filter tahun)
+    db.get('SELECT COUNT(*) as total FROM anggota WHERE status = "aktif"', [], (err, row) => {
       if (err) {
-        console.error('Error calculating total simpanan:', err);
-        stats.totalSimpanan = 0;
+        console.error('Error getting total anggota:', err);
+        stats.totalAnggota = 0;
       } else {
-        stats.totalSimpanan = row ? parseFloat(row.total) || 0 : 0;
-      }
-      continueStats(currentYear);
-    });
-  });
-  
-  function continueStats(tahun) {
-    // Total Penjualan - coba tahun berjalan dulu, jika tidak ada data coba semua data
-    db.get("SELECT COALESCE(SUM(jumlah_penjualan), 0) as total FROM transaksi_penjualan WHERE strftime('%Y', tanggal_transaksi) = ?", [tahun.toString()], (err, row) => {
-      if (err) {
-        console.error('Error getting penjualan stats:', err);
-        stats.totalPenjualan = 0;
-      } else {
-        stats.totalPenjualan = row ? row.total : 0;
-        console.log(`Penjualan tahun ${tahun}:`, stats.totalPenjualan);
+        stats.totalAnggota = row ? row.total : 0;
       }
       
-      // Jika tidak ada data tahun berjalan, coba ambil data terbaru
-      if (stats.totalPenjualan === 0) {
-        db.get("SELECT COALESCE(SUM(jumlah_penjualan), 0) as total FROM transaksi_penjualan", [], (err2, row2) => {
-          if (!err2 && row2) {
-            stats.totalPenjualan = row2.total;
-            console.log('Fallback penjualan (semua data):', stats.totalPenjualan);
-          }
-          continueWithHPP(tahun);
-        });
-      } else {
-        continueWithHPP(tahun);
-      }
-    });
-  }
-  
-  function continueWithHPP(tahun) {
-    // Total HPP - coba tahun berjalan dulu
-    db.get("SELECT COALESCE(SUM(hpp), 0) as total FROM transaksi_penjualan WHERE strftime('%Y', tanggal_transaksi) = ?", [tahun.toString()], (err, row) => {
-      if (err) {
-        console.error('Error getting HPP stats:', err);
-        stats.totalHPP = 0;
-      } else {
-        stats.totalHPP = row ? row.total : 0;
-        console.log(`HPP tahun ${tahun}:`, stats.totalHPP);
-      }
-      
-      // Jika tidak ada data tahun berjalan, coba ambil data terbaru
-      if (stats.totalHPP === 0) {
-        db.get('SELECT COALESCE(SUM(hpp), 0) as total FROM transaksi_penjualan', [], (err2, row2) => {
-          if (!err2 && row2) {
-            stats.totalHPP = row2.total;
-            console.log('Fallback HPP (semua data):', stats.totalHPP);
-          }
-          continueWithPengeluaran(tahun);
-        });
-      } else {
-        continueWithPengeluaran(tahun);
-      }
-    });
-  }
-  
-  function continueWithPengeluaran(tahun) {
-    // Total Pengeluaran - coba tahun berjalan dulu
-    db.get(`SELECT COALESCE(SUM(jumlah), 0) as total 
-            FROM pengeluaran 
-            WHERE kategori NOT IN ('Pembelian Barang', 'Pembelian Aset & Inventaris')
-            AND strftime('%Y', tanggal_transaksi) = ?`, [tahun.toString()], (err, row) => {
-      if (err) {
-        console.error('Error getting pengeluaran stats:', err);
-        stats.totalPengeluaran = 0;
-      } else {
-        stats.totalPengeluaran = row ? row.total : 0;
-        console.log(`Pengeluaran tahun ${tahun}:`, stats.totalPengeluaran);
-      }
-      
-      // Jika tidak ada data tahun berjalan, coba ambil data terbaru
-      if (stats.totalPengeluaran === 0) {
-        db.get(`SELECT COALESCE(SUM(jumlah), 0) as total 
-                FROM pengeluaran 
-                WHERE kategori NOT IN ('Pembelian Barang', 'Pembelian Aset & Inventaris')`, [], (err2, row2) => {
-          if (!err2 && row2) {
-            stats.totalPengeluaran = row2.total;
-            console.log('Fallback pengeluaran (semua data):', stats.totalPengeluaran);
-          }
-          continueWithPendapatanLain(tahun);
-        });
-      } else {
-        continueWithPendapatanLain(tahun);
-      }
-    });
-  }
-  
-  function continueWithPendapatanLain(tahun) {
-    // Total Pendapatan Lain - coba tahun berjalan dulu
-    db.get("SELECT COALESCE(SUM(jumlah), 0) as total FROM pendapatan_lain WHERE strftime('%Y', tanggal_transaksi) = ?", [tahun.toString()], (err, row) => {
-      if (err) {
-        console.error('Error getting pendapatan lain stats:', err);
-        stats.totalPendapatanLain = 0;
-      } else {
-        stats.totalPendapatanLain = row ? row.total : 0;
-        console.log(`Pendapatan lain tahun ${tahun}:`, stats.totalPendapatanLain);
-      }
-      
-      // Jika tidak ada data tahun berjalan, coba ambil data terbaru
-      if (stats.totalPendapatanLain === 0) {
-        db.get('SELECT COALESCE(SUM(jumlah), 0) as total FROM pendapatan_lain', [], (err2, row2) => {
-          if (!err2 && row2) {
-            stats.totalPendapatanLain = row2.total;
-            console.log('Fallback pendapatan lain (semua data):', stats.totalPendapatanLain);
-          }
-          finalizeStats();
-        });
-      } else {
-        finalizeStats();
-      }
-    });
-  }
-  
-  function finalizeStats() {
-    try {
-      // Calculate totals with safe defaults
-      stats.totalPenjualan = stats.totalPenjualan || 0;
-      stats.totalPendapatanLain = stats.totalPendapatanLain || 0;
-      stats.totalHPP = stats.totalHPP || 0;
-      stats.totalPengeluaran = stats.totalPengeluaran || 0;
-      
-      stats.totalPendapatan = stats.totalPenjualan + stats.totalPendapatanLain;
-      stats.labaKotor = stats.totalPendapatan - stats.totalHPP;
-      stats.labaBersih = stats.labaKotor - stats.totalPengeluaran;
-      stats.labaRugi = stats.labaBersih;
-      
-      console.log('Dashboard stats calculated successfully:', stats);
-      res.json(stats);
-    } catch (finalError) {
-      console.error('Error in finalizeStats:', finalError);
-      res.status(500).json({ error: 'Error calculating final stats: ' + finalError.message });
-    }
-  }
-});
-
-// Debug endpoint untuk melihat data transaksi
-app.get('/api/debug/transaksi', authenticateToken, (req, res) => {
-  const currentYear = new Date().getFullYear();
-  
-  // Check data transaksi
-  db.all("SELECT COUNT(*) as count, strftime('%Y', tanggal_transaksi) as tahun FROM transaksi_penjualan GROUP BY strftime('%Y', tanggal_transaksi) ORDER BY tahun DESC", [], (err, penjualan) => {
-    if (err) return res.status(500).json({ error: err.message });
-    
-    db.all("SELECT COUNT(*) as count, strftime('%Y', tanggal_transaksi) as tahun FROM pengeluaran GROUP BY strftime('%Y', tanggal_transaksi) ORDER BY tahun DESC", [], (err2, pengeluaran) => {
-      if (err2) return res.status(500).json({ error: err2.message });
-      
-      db.all("SELECT COUNT(*) as count, strftime('%Y', tanggal_transaksi) as tahun FROM pendapatan_lain GROUP BY strftime('%Y', tanggal_transaksi) ORDER BY tahun DESC", [], (err3, pendapatanLain) => {
-        if (err3) return res.status(500).json({ error: err3.message });
-        
-        // Get sample data for current year
-        db.all("SELECT tanggal_transaksi, jumlah_penjualan, hpp FROM transaksi_penjualan WHERE strftime('%Y', tanggal_transaksi) = ? LIMIT 5", [currentYear.toString()], (err4, samplePenjualan) => {
-          if (err4) return res.status(500).json({ error: err4.message });
-          
-          res.json({
-            currentYear,
-            penjualan: penjualan || [],
-            pengeluaran: pengeluaran || [],
-            pendapatanLain: pendapatanLain || [],
-            samplePenjualan: samplePenjualan || []
+      // Total Simpanan dengan filter tahun
+      db.get(`SELECT 
+              (SELECT COALESCE(SUM(CAST(jumlah AS REAL)), 0) FROM simpanan_pokok WHERE (status = 'approved' OR status IS NULL) AND (tahun_pembukuan = ? OR tahun_pembukuan IS NULL)) +
+              (SELECT COALESCE(SUM(CAST(jumlah AS REAL)), 0) FROM simpanan_wajib WHERE (status = 'approved' OR status IS NULL) AND (tahun_pembukuan = ? OR tahun_pembukuan IS NULL)) +
+              (SELECT COALESCE(SUM(CAST(jumlah AS REAL)), 0) FROM simpanan_khusus WHERE (status = 'approved' OR status IS NULL) AND (tahun_pembukuan = ? OR tahun_pembukuan IS NULL)) +
+              (SELECT COALESCE(SUM(CASE WHEN jenis = 'Setoran' THEN CAST(jumlah AS REAL) ELSE -CAST(jumlah AS REAL) END), 0) FROM simpanan_sukarela WHERE (status = 'approved' OR status IS NULL) AND (tahun_pembukuan = ? OR tahun_pembukuan IS NULL)) as total`, 
+              [tahunAktif, tahunAktif, tahunAktif, tahunAktif], (err, row) => {
+        if (err && err.message && err.message.includes('no such column')) {
+          console.error('Column not found, using fallback query for simpanan:', err);
+          // Fallback without tahun_pembukuan filter
+          db.get(`SELECT 
+                  (SELECT COALESCE(SUM(CAST(jumlah AS REAL)), 0) FROM simpanan_pokok) +
+                  (SELECT COALESCE(SUM(CAST(jumlah AS REAL)), 0) FROM simpanan_wajib) +
+                  (SELECT COALESCE(SUM(CAST(jumlah AS REAL)), 0) FROM simpanan_khusus) +
+                  (SELECT COALESCE(SUM(CASE WHEN jenis = 'Setoran' THEN CAST(jumlah AS REAL) ELSE -CAST(jumlah AS REAL) END), 0) FROM simpanan_sukarela) as total`, [], (err2, row2) => {
+            if (err2) {
+              console.error('Error in fallback simpanan query:', err2);
+              stats.totalSimpanan = 0;
+            } else {
+              stats.totalSimpanan = row2 ? parseFloat(row2.total) || 0 : 0;
+            }
+            continueStats(tahunAktif);
           });
-        });
+        } else if (err) {
+          console.error('Error calculating total simpanan:', err);
+          stats.totalSimpanan = 0;
+          continueStats(tahunAktif);
+        } else {
+          stats.totalSimpanan = row ? parseFloat(row.total) || 0 : 0;
+          continueStats(tahunAktif);
+        }
       });
     });
-  });
+    
+    function continueStats(tahun) {
+      // Total Penjualan dengan filter tahun
+      db.get('SELECT COALESCE(SUM(jumlah_penjualan), 0) as total FROM transaksi_penjualan WHERE tahun_pembukuan = ? OR tahun_pembukuan IS NULL', [tahun], (err, row) => {
+        if (err) {
+          console.error('Error getting penjualan stats:', err);
+          // Fallback without tahun filter
+          db.get('SELECT COALESCE(SUM(jumlah_penjualan), 0) as total FROM transaksi_penjualan', [], (err2, row2) => {
+            if (err2) {
+              console.error('Error in fallback penjualan query:', err2);
+              stats.totalPenjualan = 0;
+            } else {
+              stats.totalPenjualan = row2 ? row2.total : 0;
+            }
+            continueWithHPP(tahun);
+          });
+        } else {
+          stats.totalPenjualan = row ? row.total : 0;
+          continueWithHPP(tahun);
+        }
+      });
+    }
+    
+    function continueWithHPP(tahun) {
+      // Total HPP dengan filter tahun
+      db.get('SELECT COALESCE(SUM(hpp), 0) as total FROM transaksi_penjualan WHERE tahun_pembukuan = ? OR tahun_pembukuan IS NULL', [tahun], (err, row) => {
+        if (err) {
+          console.error('Error getting HPP stats:', err);
+          // Fallback without tahun filter
+          db.get('SELECT COALESCE(SUM(hpp), 0) as total FROM transaksi_penjualan', [], (err2, row2) => {
+            if (err2) {
+              console.error('Error in fallback HPP query:', err2);
+              stats.totalHPP = 0;
+            } else {
+              stats.totalHPP = row2 ? row2.total : 0;
+            }
+            continueWithPengeluaran(tahun);
+          });
+        } else {
+          stats.totalHPP = row ? row.total : 0;
+          continueWithPengeluaran(tahun);
+        }
+      });
+    }
+    
+    function continueWithPengeluaran(tahun) {
+      // Total Pengeluaran dengan filter tahun
+      db.get(`SELECT COALESCE(SUM(jumlah), 0) as total 
+              FROM pengeluaran 
+              WHERE kategori NOT IN ('Pembelian Barang', 'Pembelian Aset & Inventaris')
+              AND (tahun_pembukuan = ? OR tahun_pembukuan IS NULL)`, [tahun], (err, row) => {
+        if (err) {
+          console.error('Error getting pengeluaran stats:', err);
+          // Fallback without tahun filter
+          db.get(`SELECT COALESCE(SUM(jumlah), 0) as total 
+                  FROM pengeluaran 
+                  WHERE kategori NOT IN ('Pembelian Barang', 'Pembelian Aset & Inventaris')`, [], (err2, row2) => {
+            if (err2) {
+              console.error('Error in fallback pengeluaran query:', err2);
+              stats.totalPengeluaran = 0;
+            } else {
+              stats.totalPengeluaran = row2 ? row2.total : 0;
+            }
+            continueWithPendapatanLain(tahun);
+          });
+        } else {
+          stats.totalPengeluaran = row ? row.total : 0;
+          continueWithPendapatanLain(tahun);
+        }
+      });
+    }
+    
+    function continueWithPendapatanLain(tahun) {
+      // Total Pendapatan Lain dengan filter tahun
+      db.get('SELECT COALESCE(SUM(jumlah), 0) as total FROM pendapatan_lain WHERE tahun_pembukuan = ? OR tahun_pembukuan IS NULL', [tahun], (err, row) => {
+        if (err) {
+          console.error('Error getting pendapatan lain stats:', err);
+          // Fallback without tahun filter
+          db.get('SELECT COALESCE(SUM(jumlah), 0) as total FROM pendapatan_lain', [], (err2, row2) => {
+            if (err2) {
+              console.error('Error in fallback pendapatan lain query:', err2);
+              stats.totalPendapatanLain = 0;
+            } else {
+              stats.totalPendapatanLain = row2 ? row2.total : 0;
+            }
+            finalizeStats();
+          });
+        } else {
+          stats.totalPendapatanLain = row ? row.total : 0;
+          finalizeStats();
+        }
+      });
+    }
+    
+    function finalizeStats() {
+      try {
+        // Calculate totals with safe defaults
+        stats.totalPenjualan = stats.totalPenjualan || 0;
+        stats.totalPendapatanLain = stats.totalPendapatanLain || 0;
+        stats.totalHPP = stats.totalHPP || 0;
+        stats.totalPengeluaran = stats.totalPengeluaran || 0;
+        
+        stats.totalPendapatan = stats.totalPenjualan + stats.totalPendapatanLain;
+        stats.labaKotor = stats.totalPendapatan - stats.totalHPP;
+        stats.labaBersih = stats.labaKotor - stats.totalPengeluaran;
+        stats.labaRugi = stats.labaBersih;
+        
+        console.log('Dashboard stats calculated successfully:', stats);
+        res.json(stats);
+      } catch (finalError) {
+        console.error('Error in finalizeStats:', finalError);
+        res.status(500).json({ error: 'Error calculating final stats: ' + finalError.message });
+      }
+    }
+  } catch (error) {
+    console.error('Error in dashboard stats endpoint:', error);
+    res.status(500).json({ error: 'Dashboard stats error: ' + error.message });
+  }
 });
 
 // ===== TRANSAKSI ROUTES =====
@@ -816,45 +943,51 @@ app.get('/api/transaksi/penjualan', authenticateToken, (req, res) => {
   });
 });
 
-app.post('/api/transaksi/penjualan', authenticateToken, (req, res) => {
+app.post('/api/transaksi/penjualan', authenticateToken, async (req, res) => {
   const { unit_usaha_id, tanggal_transaksi, jumlah_penjualan, hpp, keterangan } = req.body;
   const keuntungan = jumlah_penjualan - (hpp || 0);
   
-  // Get unit usaha name for activity log
-  if (unit_usaha_id) {
-    db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
-      insertPenjualan(unitUsaha ? unitUsaha.nama_usaha : null);
-    });
-  } else {
-    insertPenjualan(null);
-  }
-  
-  function insertPenjualan(unitUsahaName) {
-    db.run('INSERT INTO transaksi_penjualan (unit_usaha_id, tanggal_transaksi, jumlah_penjualan, hpp, keuntungan, keterangan) VALUES (?, ?, ?, ?, ?, ?)',
-      [unit_usaha_id, tanggal_transaksi, jumlah_penjualan, hpp, keuntungan, keterangan],
-      function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      
-      // Log activity
-      const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
-      const unitUsahaText = unitUsahaName ? ` dari ${unitUsahaName}` : '';
-      const description = `Menambahkan penjualan${unitUsahaText} sebesar ${formatCurrency(jumlah_penjualan)} (Keuntungan: ${formatCurrency(keuntungan)})`;
-      
-      const ip = req.ip || req.connection.remoteAddress;
-      const userAgent = req.get('user-agent') || '';
-      
-      db.run(
-        `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [req.user.id, req.user.username, 'CREATE', 'Penjualan', description, ip, userAgent],
-        (logErr) => {
-          if (logErr) console.error('Error logging activity:', logErr);
-        }
-      );
-      
-      res.json({ message: 'Transaksi penjualan berhasil ditambahkan', id: this.lastID });
+  try {
+    const tahunAktif = await getTahunAktif();
+    
+    // Get unit usaha name for activity log
+    if (unit_usaha_id) {
+      db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
+        insertPenjualan(unitUsaha ? unitUsaha.nama_usaha : null, tahunAktif);
+      });
+    } else {
+      insertPenjualan(null, tahunAktif);
     }
-  );
+    
+    function insertPenjualan(unitUsahaName, tahun) {
+      db.run('INSERT INTO transaksi_penjualan (unit_usaha_id, tanggal_transaksi, jumlah_penjualan, hpp, keuntungan, keterangan, tahun_pembukuan) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [unit_usaha_id, tanggal_transaksi, jumlah_penjualan, hpp, keuntungan, keterangan, tahun],
+        function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        // Log activity
+        const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+        const unitUsahaText = unitUsahaName ? ` dari ${unitUsahaName}` : '';
+        const description = `Menambahkan penjualan${unitUsahaText} sebesar ${formatCurrency(jumlah_penjualan)} (Keuntungan: ${formatCurrency(keuntungan)})`;
+        
+        const ip = req.ip || req.connection.remoteAddress;
+        const userAgent = req.get('user-agent') || '';
+        
+        db.run(
+          `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [req.user.id, req.user.username, 'CREATE', 'Penjualan', description, ip, userAgent],
+          (logErr) => {
+            if (logErr) console.error('Error logging activity:', logErr);
+          }
+        );
+        
+        res.json({ message: 'Transaksi penjualan berhasil ditambahkan', id: this.lastID });
+      }
+    );
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -868,122 +1001,158 @@ app.get('/api/transaksi/pengeluaran', authenticateToken, (req, res) => {
   });
 });
 
-app.post('/api/transaksi/pengeluaran', authenticateToken, buktiUpload.single('bukti_pengeluaran'), (req, res) => {
+app.post('/api/transaksi/pengeluaran', authenticateToken, buktiUpload.single('bukti_pengeluaran'), async (req, res) => {
   const { unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan } = req.body;
   const bukti_pengeluaran = req.file ? req.file.filename : null;
   
-  // Get unit usaha name for activity log
-  if (unit_usaha_id) {
-    db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
-      insertPengeluaran(unitUsaha ? unitUsaha.nama_usaha : null);
-    });
-  } else {
-    insertPengeluaran(null);
-  }
-  
-  function insertPengeluaran(unitUsahaName) {
-    // Check if bukti_pengeluaran column exists
-    db.all("PRAGMA table_info(pengeluaran)", [], (err, columns) => {
-      const hasBuktiColumn = columns && columns.some(col => col.name === 'bukti_pengeluaran');
-      
-      if (hasBuktiColumn) {
-        // Insert with bukti_pengeluaran
-        db.run('INSERT INTO pengeluaran (unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan, bukti_pengeluaran) VALUES (?, ?, ?, ?, ?, ?)',
-          [unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan, bukti_pengeluaran],
-          function(err) {
-            if (err) return res.status(500).json({ error: err.message });
-            
-            // Log activity
-            const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
-            const unitUsahaText = unitUsahaName ? ` untuk ${unitUsahaName}` : '';
-            const description = `Menambahkan pengeluaran ${kategori}${unitUsahaText} sebesar ${formatCurrency(jumlah)}`;
-            
-            const ip = req.ip || req.connection.remoteAddress;
-            const userAgent = req.get('user-agent') || '';
-            
-            db.run(
-              `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
-               VALUES (?, ?, ?, ?, ?, ?, ?)`,
-              [req.user.id, req.user.username, 'CREATE', 'Pengeluaran', description, ip, userAgent],
-              (logErr) => {
-                if (logErr) console.error('Error logging activity:', logErr);
-              }
-            );
-            
-            res.json({ message: 'Pengeluaran berhasil ditambahkan', id: this.lastID, bukti_pengeluaran });
-          }
-        );
-      } else {
-        // Insert without bukti_pengeluaran (backward compatibility)
-        db.run('INSERT INTO pengeluaran (unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan) VALUES (?, ?, ?, ?, ?)',
-          [unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan],
-          function(err) {
-            if (err) return res.status(500).json({ error: err.message });
-            
-            // Log activity
-            const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
-            const unitUsahaText = unitUsahaName ? ` untuk ${unitUsahaName}` : '';
-            const description = `Menambahkan pengeluaran ${kategori}${unitUsahaText} sebesar ${formatCurrency(jumlah)}`;
-            
-            const ip = req.ip || req.connection.remoteAddress;
-            const userAgent = req.get('user-agent') || '';
-            
-            db.run(
-              `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
-               VALUES (?, ?, ?, ?, ?, ?, ?)`,
-              [req.user.id, req.user.username, 'CREATE', 'Pengeluaran', description, ip, userAgent],
-              (logErr) => {
-                if (logErr) console.error('Error logging activity:', logErr);
-              }
-            );
-            
-            res.json({ message: 'Pengeluaran berhasil ditambahkan', id: this.lastID });
-          }
-        );
-      }
-    });
+  try {
+    const tahunAktif = await getTahunAktif();
+    
+    // Get unit usaha name for activity log
+    if (unit_usaha_id) {
+      db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
+        insertPengeluaran(unitUsaha ? unitUsaha.nama_usaha : null, tahunAktif);
+      });
+    } else {
+      insertPengeluaran(null, tahunAktif);
+    }
+    
+    function insertPengeluaran(unitUsahaName, tahun) {
+      // Check if bukti_pengeluaran column exists
+      db.all("PRAGMA table_info(pengeluaran)", [], (err, columns) => {
+        const hasBuktiColumn = columns && columns.some(col => col.name === 'bukti_pengeluaran');
+        
+        if (hasBuktiColumn) {
+          // Insert with bukti_pengeluaran
+          db.run('INSERT INTO pengeluaran (unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan, bukti_pengeluaran, tahun_pembukuan) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan, bukti_pengeluaran, tahun],
+            function(err) {
+              if (err) return res.status(500).json({ error: err.message });
+              
+              // Log activity
+              const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+              const unitUsahaText = unitUsahaName ? ` untuk ${unitUsahaName}` : '';
+              const description = `Menambahkan pengeluaran ${kategori}${unitUsahaText} sebesar ${formatCurrency(jumlah)}`;
+              
+              const ip = req.ip || req.connection.remoteAddress;
+              const userAgent = req.get('user-agent') || '';
+              
+              db.run(
+                `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [req.user.id, req.user.username, 'CREATE', 'Pengeluaran', description, ip, userAgent],
+                (logErr) => {
+                  if (logErr) console.error('Error logging activity:', logErr);
+                }
+              );
+              
+              res.json({ message: 'Pengeluaran berhasil ditambahkan', id: this.lastID, bukti_pengeluaran });
+            }
+          );
+        } else {
+          // Insert without bukti_pengeluaran (backward compatibility)
+          db.run('INSERT INTO pengeluaran (unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan, tahun_pembukuan) VALUES (?, ?, ?, ?, ?, ?)',
+            [unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan, tahun],
+            function(err) {
+              if (err) return res.status(500).json({ error: err.message });
+              
+              // Log activity
+              const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+              const unitUsahaText = unitUsahaName ? ` untuk ${unitUsahaName}` : '';
+              const description = `Menambahkan pengeluaran ${kategori}${unitUsahaText} sebesar ${formatCurrency(jumlah)}`;
+              
+              const ip = req.ip || req.connection.remoteAddress;
+              const userAgent = req.get('user-agent') || '';
+              
+              db.run(
+                `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [req.user.id, req.user.username, 'CREATE', 'Pengeluaran', description, ip, userAgent],
+                (logErr) => {
+                  if (logErr) console.error('Error logging activity:', logErr);
+                }
+              );
+              
+              res.json({ message: 'Pengeluaran berhasil ditambahkan', id: this.lastID });
+            }
+          );
+        }
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
 // ===== PARTISIPASI ANGGOTA =====
-app.get('/api/partisipasi', authenticateToken, (req, res) => {
-  db.all(`SELECT pa.*, a.nama_lengkap, a.nomor_anggota, uu.nama_usaha 
-          FROM partisipasi_anggota pa 
-          JOIN anggota a ON pa.anggota_id = a.id 
-          LEFT JOIN unit_usaha uu ON pa.unit_usaha_id = uu.id 
-          ORDER BY pa.tanggal_transaksi DESC`, [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows || []);
-  });
+app.get('/api/partisipasi', authenticateToken, async (req, res) => {
+  try {
+    const tahunAktif = await getTahunAktif();
+    console.log('Getting partisipasi for tahun:', tahunAktif);
+    
+    // Try with tahun_pembukuan filter first
+    db.all(`SELECT pa.*, a.nama_lengkap, a.nomor_anggota, uu.nama_usaha 
+            FROM partisipasi_anggota pa 
+            JOIN anggota a ON pa.anggota_id = a.id 
+            LEFT JOIN unit_usaha uu ON pa.unit_usaha_id = uu.id 
+            WHERE pa.tahun_pembukuan = ? OR pa.tahun_pembukuan IS NULL
+            ORDER BY pa.tanggal_transaksi DESC`, [tahunAktif], (err, rows) => {
+      if (err) {
+        console.error('Error with tahun_pembukuan filter:', err);
+        // Fallback: try without tahun_pembukuan filter
+        db.all(`SELECT pa.*, a.nama_lengkap, a.nomor_anggota, uu.nama_usaha 
+                FROM partisipasi_anggota pa 
+                JOIN anggota a ON pa.anggota_id = a.id 
+                LEFT JOIN unit_usaha uu ON pa.unit_usaha_id = uu.id 
+                ORDER BY pa.tanggal_transaksi DESC`, [], (err2, rows2) => {
+          if (err2) {
+            console.error('Error with fallback query:', err2);
+            return res.status(500).json({ error: err2.message });
+          }
+          console.log('Partisipasi fallback query success, rows:', rows2.length);
+          res.json(rows2 || []);
+        });
+      } else {
+        console.log('Partisipasi query success, rows:', rows.length);
+        res.json(rows || []);
+      }
+    });
+  } catch (error) {
+    console.error('Error in partisipasi endpoint:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post('/api/partisipasi', authenticateToken, buktiUpload.single('bukti_partisipasi'), async (req, res) => {
   const { anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan } = req.body;
   const bukti_partisipasi = req.file ? req.file.filename : null;
   
-  // Get anggota name for activity log
-  db.get('SELECT nama_lengkap, nomor_anggota FROM anggota WHERE id = ?', [anggota_id], (err, anggota) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!anggota) return res.status(404).json({ error: 'Anggota tidak ditemukan' });
+  try {
+    const tahunAktif = await getTahunAktif();
     
-    // Get unit usaha name for activity log
-    if (unit_usaha_id) {
+    // Get anggota name for activity log
+    db.get('SELECT nama_lengkap, nomor_anggota FROM anggota WHERE id = ?', [anggota_id], (err, anggota) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (!anggota) return res.status(404).json({ error: 'Anggota tidak ditemukan' });
+      
+      // Get unit usaha name for activity log
+      if (unit_usaha_id) {
         db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
-          insertPartisipasi(unitUsaha ? unitUsaha.nama_usaha : null);
+          insertPartisipasi(unitUsaha ? unitUsaha.nama_usaha : null, tahunAktif);
         });
       } else {
-        insertPartisipasi(null);
+        insertPartisipasi(null, tahunAktif);
       }
       
-      function insertPartisipasi(unitUsahaName) {
+      function insertPartisipasi(unitUsahaName, tahun) {
         // Check if bukti_partisipasi column exists
         db.all("PRAGMA table_info(partisipasi_anggota)", [], (err, columns) => {
           const hasBuktiColumn = columns && columns.some(col => col.name === 'bukti_partisipasi');
           
           if (hasBuktiColumn) {
             // Insert with bukti_partisipasi
-            db.run('INSERT INTO partisipasi_anggota (anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan, bukti_partisipasi) VALUES (?, ?, ?, ?, ?, ?)',
-              [anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan, bukti_partisipasi],
+            db.run('INSERT INTO partisipasi_anggota (anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan, bukti_partisipasi, tahun_pembukuan) VALUES (?, ?, ?, ?, ?, ?, ?)',
+              [anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan, bukti_partisipasi, tahun],
               function(err) {
               if (err) return res.status(500).json({ error: err.message });
               
@@ -1009,8 +1178,8 @@ app.post('/api/partisipasi', authenticateToken, buktiUpload.single('bukti_partis
           );
         } else {
           // Insert without bukti_partisipasi (backward compatibility)
-          db.run('INSERT INTO partisipasi_anggota (anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan) VALUES (?, ?, ?, ?, ?)',
-            [anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan],
+          db.run('INSERT INTO partisipasi_anggota (anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan, tahun_pembukuan) VALUES (?, ?, ?, ?, ?, ?)',
+            [anggota_id, unit_usaha_id, jumlah_transaksi, tanggal_transaksi, keterangan, tahun],
             function(err) {
               if (err) return res.status(500).json({ error: err.message });
               
@@ -1038,6 +1207,9 @@ app.post('/api/partisipasi', authenticateToken, buktiUpload.single('bukti_partis
       });
       }
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // ===== SHU ROUTES =====
@@ -1115,11 +1287,11 @@ app.post('/api/shu/hitung/:tahun', authenticateToken, (req, res) => {
   // SHU Tahun Berjalan = Laba Kotor - Biaya Operasional
   // Biaya Operasional = Pengeluaran TANPA Pembelian Barang dan Pembelian Aset
   db.get(`SELECT 
-          (SELECT COALESCE(SUM(jumlah_penjualan), 0) FROM transaksi_penjualan WHERE strftime('%Y', tanggal_transaksi) = ?) +
-          (SELECT COALESCE(SUM(jumlah), 0) FROM pendapatan_lain WHERE strftime('%Y', tanggal_transaksi) = ?) -
-          (SELECT COALESCE(SUM(hpp), 0) FROM transaksi_penjualan WHERE strftime('%Y', tanggal_transaksi) = ?) -
+          (SELECT COALESCE(SUM(jumlah_penjualan), 0) FROM transaksi_penjualan WHERE tahun_pembukuan = ?) +
+          (SELECT COALESCE(SUM(jumlah), 0) FROM pendapatan_lain WHERE tahun_pembukuan = ?) -
+          (SELECT COALESCE(SUM(hpp), 0) FROM transaksi_penjualan WHERE tahun_pembukuan = ?) -
           (SELECT COALESCE(SUM(jumlah), 0) FROM pengeluaran 
-           WHERE strftime('%Y', tanggal_transaksi) = ? 
+           WHERE tahun_pembukuan = ? 
            AND kategori NOT IN ('Pembelian Barang', 'Pembelian Aset & Inventaris', 'Pembelian Aset')) as keuntungan_bersih`,
     [tahun, tahun, tahun, tahun], (err, result) => {
       if (err) return res.status(500).json({ error: err.message });
@@ -1135,11 +1307,11 @@ app.post('/api/shu/hitung/:tahun', authenticateToken, (req, res) => {
         
         // Hitung total simpanan dan partisipasi per anggota
         db.all(`SELECT a.id, a.nama_lengkap,
-                (SELECT COALESCE(SUM(jumlah), 0) FROM simpanan_pokok WHERE anggota_id = a.id) +
-                (SELECT COALESCE(SUM(jumlah), 0) FROM simpanan_wajib WHERE anggota_id = a.id) +
-                (SELECT COALESCE(SUM(jumlah), 0) FROM simpanan_khusus WHERE anggota_id = a.id) as total_simpanan,
-                (SELECT COALESCE(SUM(jumlah_transaksi), 0) FROM partisipasi_anggota WHERE anggota_id = a.id AND strftime('%Y', tanggal_transaksi) = ?) as total_partisipasi
-                FROM anggota a WHERE a.status = 'aktif'`, [tahun], (err, anggotaList) => {
+                (SELECT COALESCE(SUM(jumlah), 0) FROM simpanan_pokok WHERE anggota_id = a.id AND (tahun_pembukuan = ? OR tahun_pembukuan IS NULL)) +
+                (SELECT COALESCE(SUM(jumlah), 0) FROM simpanan_wajib WHERE anggota_id = a.id AND (tahun_pembukuan = ? OR tahun_pembukuan IS NULL)) +
+                (SELECT COALESCE(SUM(jumlah), 0) FROM simpanan_khusus WHERE anggota_id = a.id AND (tahun_pembukuan = ? OR tahun_pembukuan IS NULL)) as total_simpanan,
+                (SELECT COALESCE(SUM(jumlah_transaksi), 0) FROM partisipasi_anggota WHERE anggota_id = a.id AND tahun_pembukuan = ?) as total_partisipasi
+                FROM anggota a WHERE a.status = 'aktif'`, [tahun, tahun, tahun, tahun], (err, anggotaList) => {
           if (err) return res.status(500).json({ error: err.message });
           
           const totalSimpananSemua = anggotaList.reduce((sum, a) => sum + a.total_simpanan, 0);
@@ -1168,19 +1340,19 @@ app.get('/api/shu/anggota/:tahun', authenticateToken, (req, res) => {
   const tahun = req.params.tahun;
   db.all(`SELECT sa.*, a.nama_lengkap, a.nomor_anggota,
           COALESCE(
-            (SELECT SUM(jumlah) FROM simpanan_pokok WHERE anggota_id = a.id), 0
+            (SELECT SUM(jumlah) FROM simpanan_pokok WHERE anggota_id = a.id AND (tahun_pembukuan = ? OR tahun_pembukuan IS NULL)), 0
           ) + COALESCE(
-            (SELECT SUM(jumlah) FROM simpanan_wajib WHERE anggota_id = a.id), 0
+            (SELECT SUM(jumlah) FROM simpanan_wajib WHERE anggota_id = a.id AND (tahun_pembukuan = ? OR tahun_pembukuan IS NULL)), 0
           ) + COALESCE(
-            (SELECT SUM(jumlah) FROM simpanan_khusus WHERE anggota_id = a.id), 0
+            (SELECT SUM(jumlah) FROM simpanan_khusus WHERE anggota_id = a.id AND (tahun_pembukuan = ? OR tahun_pembukuan IS NULL)), 0
           ) as total_simpanan,
           COALESCE(
-            (SELECT SUM(jumlah_transaksi) FROM partisipasi_anggota WHERE anggota_id = a.id AND strftime('%Y', tanggal_transaksi) = ?), 0
+            (SELECT SUM(jumlah_transaksi) FROM partisipasi_anggota WHERE anggota_id = a.id AND tahun_pembukuan = ?), 0
           ) as total_transaksi
           FROM shu_anggota sa 
           JOIN anggota a ON sa.anggota_id = a.id 
           WHERE sa.tahun = ? 
-          ORDER BY a.nomor_anggota ASC`, [tahun, tahun], (err, rows) => {
+          ORDER BY a.nomor_anggota ASC`, [tahun, tahun, tahun, tahun, tahun], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
   });
@@ -1256,49 +1428,55 @@ app.delete('/api/users/:id', authenticateToken, (req, res) => {
 });
 
 // ===== LAPORAN =====
-app.get('/api/laporan/simpanan', authenticateToken, (req, res) => {
+app.get('/api/laporan/simpanan', authenticateToken, async (req, res) => {
   const { periode, tahun, bulan, tanggal } = req.query;
   
-  // Jika tidak ada parameter tahun, gunakan tahun berjalan
-  const tahunFilter = tahun || new Date().getFullYear();
-  
-  let dateFilter = '';
-  
-  if (periode === 'harian' && tanggal) {
-    dateFilter = `AND tanggal_transaksi = '${tanggal}'`;
-  } else if (periode === 'bulanan' && tahun && bulan) {
-    dateFilter = `AND strftime('%Y-%m', tanggal_transaksi) = '${tahun}-${bulan}'`;
-  } else if (periode === 'tahunan' && tahun) {
-    // Untuk laporan tahunan, gunakan filter berdasarkan tanggal transaksi
-    dateFilter = `AND strftime('%Y', tanggal_transaksi) = '${tahun}'`;
-  }
+  try {
+    // Jika tidak ada parameter tahun, gunakan tahun aktif
+    const tahunFilter = tahun || await getTahunAktif();
+    
+    let dateFilter = '';
+    let tahunPembukuanFilter = `AND (tahun_pembukuan = ${tahunFilter} OR tahun_pembukuan IS NULL)`;
+    
+    if (periode === 'harian' && tanggal) {
+      dateFilter = `AND tanggal_transaksi = '${tanggal}'`;
+    } else if (periode === 'bulanan' && tahun && bulan) {
+      dateFilter = `AND strftime('%Y-%m', tanggal_transaksi) = '${tahun}-${bulan}'`;
+    } else if (periode === 'tahunan' && tahun) {
+      // Untuk laporan tahunan, gunakan filter tahun_pembukuan
+      tahunPembukuanFilter = `AND tahun_pembukuan = ${tahun}`;
+      dateFilter = '';
+    }
     
     db.all(`SELECT 
             'Simpanan Pokok' as jenis,
             SUM(jumlah) as total,
             COUNT(*) as jumlah_transaksi
-            FROM simpanan_pokok WHERE 1=1 ${dateFilter}
+            FROM simpanan_pokok WHERE 1=1 ${dateFilter} ${tahunPembukuanFilter}
             UNION ALL
             SELECT 
             'Simpanan Wajib' as jenis,
             SUM(jumlah) as total,
             COUNT(*) as jumlah_transaksi
-            FROM simpanan_wajib WHERE 1=1 ${dateFilter}
+            FROM simpanan_wajib WHERE 1=1 ${dateFilter} ${tahunPembukuanFilter}
             UNION ALL
             SELECT 
             'Simpanan Khusus' as jenis,
             SUM(jumlah) as total,
             COUNT(*) as jumlah_transaksi
-            FROM simpanan_khusus WHERE 1=1 ${dateFilter}
+            FROM simpanan_khusus WHERE 1=1 ${dateFilter} ${tahunPembukuanFilter}
             UNION ALL
             SELECT 
             'Simpanan Sukarela' as jenis,
             SUM(CASE WHEN jenis = 'Setoran' THEN jumlah ELSE -jumlah END) as total,
             COUNT(*) as jumlah_transaksi
-            FROM simpanan_sukarela WHERE 1=1 ${dateFilter}`, [], (err, rows) => {
+            FROM simpanan_sukarela WHERE 1=1 ${dateFilter} ${tahunPembukuanFilter}`, [], (err, rows) => {
       if (err) return res.status(500).json({ error: err.message });
       res.json(rows);
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // ===== USER PROFILE ENDPOINTS =====
@@ -1832,23 +2010,26 @@ app.delete('/api/partisipasi/:id', authenticateToken, (req, res) => {
 });
 
 // ===== UPDATE & DELETE PENJUALAN =====
-app.put('/api/transaksi/penjualan/:id', authenticateToken, (req, res) => {
+app.put('/api/transaksi/penjualan/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { unit_usaha_id, tanggal_transaksi, jumlah_penjualan, hpp, keterangan } = req.body;
   const keuntungan = parseFloat(jumlah_penjualan) - parseFloat(hpp || 0);
   
-  // Get unit usaha name for activity log
-  if (unit_usaha_id) {
-    db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
-      updatePenjualan(unitUsaha ? unitUsaha.nama_usaha : null);
-    });
-  } else {
-    updatePenjualan(null);
-  }
-  
-  function updatePenjualan(unitUsahaName) {
-    db.run('UPDATE transaksi_penjualan SET unit_usaha_id = ?, tanggal_transaksi = ?, jumlah_penjualan = ?, hpp = ?, keuntungan = ?, keterangan = ? WHERE id = ?',
-      [unit_usaha_id, tanggal_transaksi, jumlah_penjualan, hpp, keuntungan, keterangan, id],
+  try {
+    const tahunAktif = await getTahunAktif();
+    
+    // Get unit usaha name for activity log
+    if (unit_usaha_id) {
+      db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
+        updatePenjualan(unitUsaha ? unitUsaha.nama_usaha : null, tahunAktif);
+      });
+    } else {
+      updatePenjualan(null, tahunAktif);
+    }
+    
+    function updatePenjualan(unitUsahaName, tahun) {
+      db.run('UPDATE transaksi_penjualan SET unit_usaha_id = ?, tanggal_transaksi = ?, jumlah_penjualan = ?, hpp = ?, keuntungan = ?, keterangan = ?, tahun_pembukuan = ? WHERE id = ?',
+        [unit_usaha_id, tanggal_transaksi, jumlah_penjualan, hpp, keuntungan, keterangan, tahun, id],
         function(err) {
           if (err) return res.status(500).json({ error: err.message });
           
@@ -1873,6 +2054,9 @@ app.put('/api/transaksi/penjualan/:id', authenticateToken, (req, res) => {
         }
       );
     }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.delete('/api/transaksi/penjualan/:id', authenticateToken, (req, res) => {
@@ -1909,29 +2093,32 @@ app.delete('/api/transaksi/penjualan/:id', authenticateToken, (req, res) => {
 });
 
 // ===== UPDATE & DELETE PENGELUARAN =====
-app.put('/api/transaksi/pengeluaran/:id', authenticateToken, buktiUpload.single('bukti_pengeluaran'), (req, res) => {
+app.put('/api/transaksi/pengeluaran/:id', authenticateToken, buktiUpload.single('bukti_pengeluaran'), async (req, res) => {
   const { id } = req.params;
   const { unit_usaha_id, kategori, qty, harga, jumlah, tanggal_transaksi, keterangan } = req.body;
   const bukti_pengeluaran = req.file ? req.file.filename : null;
   
-  // Get unit usaha name for activity log
-  if (unit_usaha_id) {
-    db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
-      updatePengeluaran(unitUsaha ? unitUsaha.nama_usaha : null);
-    });
-  } else {
-    updatePengeluaran(null);
-  }
-  
-  function updatePengeluaran(unitUsahaName) {
-    // Check if bukti_pengeluaran column exists
-    db.all("PRAGMA table_info(pengeluaran)", [], (err, columns) => {
-      const hasBuktiColumn = columns && columns.some(col => col.name === 'bukti_pengeluaran');
-      
-      if (hasBuktiColumn && bukti_pengeluaran) {
-        // Update with bukti_pengeluaran
-        db.run('UPDATE pengeluaran SET unit_usaha_id = ?, kategori = ?, qty = ?, harga = ?, jumlah = ?, tanggal_transaksi = ?, keterangan = ?, bukti_pengeluaran = ? WHERE id = ?',
-          [unit_usaha_id, kategori, qty, harga, jumlah, tanggal_transaksi, keterangan, bukti_pengeluaran, id],
+  try {
+    const tahunAktif = await getTahunAktif();
+    
+    // Get unit usaha name for activity log
+    if (unit_usaha_id) {
+      db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
+        updatePengeluaran(unitUsaha ? unitUsaha.nama_usaha : null, tahunAktif);
+      });
+    } else {
+      updatePengeluaran(null, tahunAktif);
+    }
+    
+    function updatePengeluaran(unitUsahaName, tahun) {
+      // Check if bukti_pengeluaran column exists
+      db.all("PRAGMA table_info(pengeluaran)", [], (err, columns) => {
+        const hasBuktiColumn = columns && columns.some(col => col.name === 'bukti_pengeluaran');
+        
+        if (hasBuktiColumn && bukti_pengeluaran) {
+          // Update with bukti_pengeluaran
+          db.run('UPDATE pengeluaran SET unit_usaha_id = ?, kategori = ?, qty = ?, harga = ?, jumlah = ?, tanggal_transaksi = ?, keterangan = ?, bukti_pengeluaran = ?, tahun_pembukuan = ? WHERE id = ?',
+            [unit_usaha_id, kategori, qty, harga, jumlah, tanggal_transaksi, keterangan, bukti_pengeluaran, tahun, id],
             function(err) {
               if (err) return res.status(500).json({ error: err.message });
               
@@ -1957,8 +2144,8 @@ app.put('/api/transaksi/pengeluaran/:id', authenticateToken, buktiUpload.single(
           );
         } else {
           // Update without bukti_pengeluaran
-          db.run('UPDATE pengeluaran SET unit_usaha_id = ?, kategori = ?, qty = ?, harga = ?, jumlah = ?, tanggal_transaksi = ?, keterangan = ? WHERE id = ?',
-            [unit_usaha_id, kategori, qty, harga, jumlah, tanggal_transaksi, keterangan, id],
+          db.run('UPDATE pengeluaran SET unit_usaha_id = ?, kategori = ?, qty = ?, harga = ?, jumlah = ?, tanggal_transaksi = ?, keterangan = ?, tahun_pembukuan = ? WHERE id = ?',
+            [unit_usaha_id, kategori, qty, harga, jumlah, tanggal_transaksi, keterangan, tahun, id],
             function(err) {
               if (err) return res.status(500).json({ error: err.message });
               
@@ -1985,6 +2172,9 @@ app.put('/api/transaksi/pengeluaran/:id', authenticateToken, buktiUpload.single(
         }
       });
     }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.delete('/api/transaksi/pengeluaran/:id', authenticateToken, (req, res) => {
@@ -2021,31 +2211,60 @@ app.delete('/api/transaksi/pengeluaran/:id', authenticateToken, (req, res) => {
 });
 
 // ===== PENDAPATAN LAIN ROUTES =====
-app.get('/api/transaksi/pendapatan-lain', authenticateToken, (req, res) => {
-  db.all(`SELECT pl.*, uu.nama_usaha 
-          FROM pendapatan_lain pl 
-          LEFT JOIN unit_usaha uu ON pl.unit_usaha_id = uu.id 
-          ORDER BY pl.tanggal_transaksi DESC`, [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows || []);
-  });
+app.get('/api/transaksi/pendapatan-lain', authenticateToken, async (req, res) => {
+  try {
+    const tahunAktif = await getTahunAktif();
+    console.log('Getting pendapatan-lain for tahun:', tahunAktif);
+    
+    // Try with tahun_pembukuan filter first
+    db.all(`SELECT pl.*, uu.nama_usaha 
+            FROM pendapatan_lain pl 
+            LEFT JOIN unit_usaha uu ON pl.unit_usaha_id = uu.id 
+            WHERE pl.tahun_pembukuan = ? OR pl.tahun_pembukuan IS NULL
+            ORDER BY pl.tanggal_transaksi DESC`, [tahunAktif], (err, rows) => {
+      if (err) {
+        console.error('Error with tahun_pembukuan filter:', err);
+        // Fallback: try without tahun_pembukuan filter
+        db.all(`SELECT pl.*, uu.nama_usaha 
+                FROM pendapatan_lain pl 
+                LEFT JOIN unit_usaha uu ON pl.unit_usaha_id = uu.id 
+                ORDER BY pl.tanggal_transaksi DESC`, [], (err2, rows2) => {
+          if (err2) {
+            console.error('Error with fallback query:', err2);
+            return res.status(500).json({ error: err2.message });
+          }
+          console.log('Pendapatan-lain fallback query success, rows:', rows2.length);
+          res.json(rows2 || []);
+        });
+      } else {
+        console.log('Pendapatan-lain query success, rows:', rows.length);
+        res.json(rows || []);
+      }
+    });
+  } catch (error) {
+    console.error('Error in pendapatan-lain endpoint:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
-app.post('/api/transaksi/pendapatan-lain', authenticateToken, (req, res) => {
+app.post('/api/transaksi/pendapatan-lain', authenticateToken, async (req, res) => {
   const { unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan } = req.body;
   
-  // Get unit usaha name for activity log
-  if (unit_usaha_id) {
-    db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
-      insertPendapatanLain(unitUsaha ? unitUsaha.nama_usaha : null);
-    });
-  } else {
-    insertPendapatanLain(null);
-  }
-  
-  function insertPendapatanLain(unitUsahaName) {
-    db.run('INSERT INTO pendapatan_lain (unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan) VALUES (?, ?, ?, ?, ?)',
-      [unit_usaha_id || null, kategori, jumlah, tanggal_transaksi, keterangan],
+  try {
+    const tahunAktif = await getTahunAktif();
+    
+    // Get unit usaha name for activity log
+    if (unit_usaha_id) {
+      db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
+        insertPendapatanLain(unitUsaha ? unitUsaha.nama_usaha : null, tahunAktif);
+      });
+    } else {
+      insertPendapatanLain(null, tahunAktif);
+    }
+    
+    function insertPendapatanLain(unitUsahaName, tahun) {
+      db.run('INSERT INTO pendapatan_lain (unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan, tahun_pembukuan) VALUES (?, ?, ?, ?, ?, ?)',
+        [unit_usaha_id || null, kategori, jumlah, tanggal_transaksi, keterangan, tahun],
         function(err) {
           if (err) return res.status(500).json({ error: err.message });
           
@@ -2070,47 +2289,56 @@ app.post('/api/transaksi/pendapatan-lain', authenticateToken, (req, res) => {
         }
       );
     }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
-app.put('/api/transaksi/pendapatan-lain/:id', authenticateToken, (req, res) => {
+app.put('/api/transaksi/pendapatan-lain/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan } = req.body;
   
-  // Get unit usaha name for activity log
-  if (unit_usaha_id) {
-    db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
-      updatePendapatanLain(unitUsaha ? unitUsaha.nama_usaha : null);
-    });
-  } else {
-    updatePendapatanLain(null);
-  }
-  
-  function updatePendapatanLain(unitUsahaName) {
-    db.run('UPDATE pendapatan_lain SET unit_usaha_id = ?, kategori = ?, jumlah = ?, tanggal_transaksi = ?, keterangan = ? WHERE id = ?',
-      [unit_usaha_id, kategori, jumlah, tanggal_transaksi, keterangan, id],
-      function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        
-        // Log activity
-        const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
-        const unitUsahaText = unitUsahaName ? ` dari ${unitUsahaName}` : '';
-        const description = `Mengupdate pendapatan lain ${kategori}${unitUsahaText} menjadi ${formatCurrency(jumlah)}`;
-        
-        const ip = req.ip || req.connection.remoteAddress;
-        const userAgent = req.get('user-agent') || '';
-        
-        db.run(
-          `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [req.user.id, req.user.username, 'UPDATE', 'Pendapatan Lain', description, ip, userAgent],
-          (logErr) => {
-            if (logErr) console.error('Error logging activity:', logErr);
-          }
-        );
-        
-        res.json({ message: 'Pendapatan lain berhasil diupdate' });
-      }
-    );
+  try {
+    const tahunAktif = await getTahunAktif();
+    
+    // Get unit usaha name for activity log
+    if (unit_usaha_id) {
+      db.get('SELECT nama_usaha FROM unit_usaha WHERE id = ?', [unit_usaha_id], (err, unitUsaha) => {
+        updatePendapatanLain(unitUsaha ? unitUsaha.nama_usaha : null, tahunAktif);
+      });
+    } else {
+      updatePendapatanLain(null, tahunAktif);
+    }
+    
+    function updatePendapatanLain(unitUsahaName, tahun) {
+      db.run('UPDATE pendapatan_lain SET unit_usaha_id = ?, kategori = ?, jumlah = ?, tanggal_transaksi = ?, keterangan = ?, tahun_pembukuan = ? WHERE id = ?',
+        [unit_usaha_id || null, kategori, jumlah, tanggal_transaksi, keterangan, tahun, id],
+        function(err) {
+          if (err) return res.status(500).json({ error: err.message });
+          
+          // Log activity
+          const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+          const unitUsahaText = unitUsahaName ? ` dari ${unitUsahaName}` : '';
+          const description = `Mengupdate pendapatan lain ${kategori}${unitUsahaText} menjadi ${formatCurrency(jumlah)}`;
+          
+          const ip = req.ip || req.connection.remoteAddress;
+          const userAgent = req.get('user-agent') || '';
+          
+          db.run(
+            `INSERT INTO activity_log (user_id, username, action, module, description, ip_address, user_agent) 
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [req.user.id, req.user.username, 'UPDATE', 'Pendapatan Lain', description, ip, userAgent],
+            (logErr) => {
+              if (logErr) console.error('Error logging activity:', logErr);
+            }
+          );
+          
+          res.json({ message: 'Pendapatan lain berhasil diupdate' });
+        }
+      );
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

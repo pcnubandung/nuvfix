@@ -160,16 +160,31 @@ const API = {
       }
     };
     
-    const response = await fetch(url, { ...defaultOptions, ...options });
-    
-    if (response.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login.html';
-      return;
+    try {
+      const response = await fetch(url, { ...defaultOptions, ...options });
+      
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login.html';
+        return;
+      }
+      
+      if (response.status === 500) {
+        console.error(`Server Error (500) for ${url}:`, response);
+        throw new Error(`Server mengalami masalah internal. Silakan coba lagi atau hubungi administrator.`);
+      }
+      
+      if (!response.ok) {
+        console.error(`HTTP Error ${response.status} for ${url}:`, response);
+        throw new Error(`Request gagal dengan status ${response.status}`);
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error(`API Request Error for ${url}:`, error);
+      throw error;
     }
-    
-    return response.json();
   },
   
   get(url) {

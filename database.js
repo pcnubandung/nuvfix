@@ -171,6 +171,7 @@ function initializeDatabase() {
       metode_pembayaran TEXT,
       keterangan TEXT,
       bukti_pembayaran TEXT,
+      tahun_pembukuan INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (anggota_id) REFERENCES anggota(id)
     )`, (err) => {
@@ -181,6 +182,12 @@ function initializeDatabase() {
         db.run(`ALTER TABLE simpanan_pokok ADD COLUMN bukti_pembayaran TEXT`, (err) => {
           if (err && !err.message.includes('duplicate column')) {
             console.error('Error adding bukti_pembayaran to simpanan_pokok:', err);
+          }
+        });
+        // Add tahun_pembukuan column if it doesn't exist
+        db.run(`ALTER TABLE simpanan_pokok ADD COLUMN tahun_pembukuan INTEGER`, (err) => {
+          if (err && !err.message.includes('duplicate column')) {
+            console.error('Error adding tahun_pembukuan to simpanan_pokok:', err);
           }
         });
         // Add status column for approval workflow
@@ -207,15 +214,23 @@ function initializeDatabase() {
       metode_pembayaran TEXT,
       keterangan TEXT,
       bukti_pembayaran TEXT,
+      tahun_pembukuan INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (anggota_id) REFERENCES anggota(id)
     )`, (err) => {
       if (err) {
         console.error('Error creating simpanan_wajib table:', err);
       } else {
+        // Add bukti_pembayaran column if it doesn't exist
         db.run(`ALTER TABLE simpanan_wajib ADD COLUMN bukti_pembayaran TEXT`, (err) => {
           if (err && !err.message.includes('duplicate column')) {
             console.error('Error adding bukti_pembayaran to simpanan_wajib:', err);
+          }
+        });
+        // Add tahun_pembukuan column if it doesn't exist
+        db.run(`ALTER TABLE simpanan_wajib ADD COLUMN tahun_pembukuan INTEGER`, (err) => {
+          if (err && !err.message.includes('duplicate column')) {
+            console.error('Error adding tahun_pembukuan to simpanan_wajib:', err);
           }
         });
         db.run(`ALTER TABLE simpanan_wajib ADD COLUMN status TEXT DEFAULT 'approved'`, (err) => {
@@ -240,6 +255,7 @@ function initializeDatabase() {
       metode_pembayaran TEXT,
       keterangan TEXT,
       bukti_pembayaran TEXT,
+      tahun_pembukuan INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (anggota_id) REFERENCES anggota(id)
     )`, (err) => {
@@ -254,6 +270,11 @@ function initializeDatabase() {
         db.run(`ALTER TABLE simpanan_khusus ADD COLUMN status TEXT DEFAULT 'approved'`, (err) => {
           if (err && !err.message.includes('duplicate column')) {
             console.error('Error adding status to simpanan_khusus:', err);
+          }
+        });
+        db.run(`ALTER TABLE simpanan_khusus ADD COLUMN tahun_pembukuan INTEGER`, (err) => {
+          if (err && !err.message.includes('duplicate column')) {
+            console.error('Error adding tahun_pembukuan to simpanan_khusus:', err);
           }
         });
         db.run(`ALTER TABLE simpanan_khusus ADD COLUMN rejection_reason TEXT`, (err) => {
@@ -274,12 +295,23 @@ function initializeDatabase() {
       metode_pembayaran TEXT,
       keterangan TEXT,
       bukti_pembayaran TEXT,
+      tahun_pembukuan INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (anggota_id) REFERENCES anggota(id)
     )`, (err) => {
       if (err) {
         console.error('Error creating simpanan_sukarela table:', err);
       } else {
+        db.run(`ALTER TABLE simpanan_sukarela ADD COLUMN bukti_pembayaran TEXT`, (err) => {
+          if (err && !err.message.includes('duplicate column')) {
+            console.error('Error adding bukti_pembayaran to simpanan_sukarela:', err);
+          }
+        });
+        db.run(`ALTER TABLE simpanan_sukarela ADD COLUMN tahun_pembukuan INTEGER`, (err) => {
+          if (err && !err.message.includes('duplicate column')) {
+            console.error('Error adding tahun_pembukuan to simpanan_sukarela:', err);
+          }
+        });
         db.run(`ALTER TABLE simpanan_sukarela ADD COLUMN bukti_pembayaran TEXT`, (err) => {
           if (err && !err.message.includes('duplicate column')) {
             console.error('Error adding bukti_pembayaran to simpanan_sukarela:', err);
@@ -307,6 +339,7 @@ function initializeDatabase() {
       tanggal_transaksi DATE NOT NULL,
       keterangan TEXT,
       bukti_partisipasi TEXT,
+      tahun_pembukuan INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (anggota_id) REFERENCES anggota(id),
       FOREIGN KEY (unit_usaha_id) REFERENCES unit_usaha(id)
@@ -317,6 +350,11 @@ function initializeDatabase() {
         db.run(`ALTER TABLE partisipasi_anggota ADD COLUMN bukti_partisipasi TEXT`, (err) => {
           if (err && !err.message.includes('duplicate column')) {
             console.error('Error adding bukti_partisipasi to partisipasi_anggota:', err);
+          }
+        });
+        db.run(`ALTER TABLE partisipasi_anggota ADD COLUMN tahun_pembukuan INTEGER`, (err) => {
+          if (err && !err.message.includes('duplicate column')) {
+            console.error('Error adding tahun_pembukuan to partisipasi_anggota:', err);
           }
         });
       }
@@ -332,6 +370,7 @@ function initializeDatabase() {
       hpp REAL DEFAULT 0,
       keuntungan REAL DEFAULT 0,
       keterangan TEXT,
+      tahun_pembukuan INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (unit_usaha_id) REFERENCES unit_usaha(id)
     )`, (err) => {
@@ -342,6 +381,13 @@ function initializeDatabase() {
         db.run(`ALTER TABLE transaksi_penjualan ADD COLUMN kategori TEXT DEFAULT 'Barang'`, (err) => {
           if (err && !err.message.includes('duplicate column')) {
             console.error('Error adding kategori column:', err);
+          }
+        });
+        
+        // Add tahun_pembukuan column if it doesn't exist
+        db.run(`ALTER TABLE transaksi_penjualan ADD COLUMN tahun_pembukuan INTEGER`, (err) => {
+          if (err && !err.message.includes('duplicate column')) {
+            console.error('Error adding tahun_pembukuan column:', err);
           }
         });
       }
@@ -358,6 +404,7 @@ function initializeDatabase() {
       tanggal_transaksi DATE NOT NULL,
       keterangan TEXT,
       bukti_pengeluaran TEXT,
+      tahun_pembukuan INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (unit_usaha_id) REFERENCES unit_usaha(id)
     )`, (err) => {
@@ -380,6 +427,11 @@ function initializeDatabase() {
             console.error('Error adding bukti_pengeluaran column:', err);
           }
         });
+        db.run(`ALTER TABLE pengeluaran ADD COLUMN tahun_pembukuan INTEGER`, (err) => {
+          if (err && !err.message.includes('duplicate column')) {
+            console.error('Error adding tahun_pembukuan column:', err);
+          }
+        });
       }
     });
 
@@ -391,9 +443,21 @@ function initializeDatabase() {
       jumlah REAL NOT NULL,
       tanggal_transaksi DATE NOT NULL,
       keterangan TEXT,
+      tahun_pembukuan INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (unit_usaha_id) REFERENCES unit_usaha(id)
-    )`);
+    )`, (err) => {
+      if (err) {
+        console.error('Error creating pendapatan_lain table:', err);
+      } else {
+        // Add tahun_pembukuan column if it doesn't exist
+        db.run(`ALTER TABLE pendapatan_lain ADD COLUMN tahun_pembukuan INTEGER`, (err) => {
+          if (err && !err.message.includes('duplicate column')) {
+            console.error('Error adding tahun_pembukuan column:', err);
+          }
+        });
+      }
+    });
 
     // Tabel Komponen SHU
     db.run(`CREATE TABLE IF NOT EXISTS komponen_shu (

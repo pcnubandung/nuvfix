@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test QR Code Generation</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-container { margin: 20px 0; padding: 20px; border: 1px solid #ddd; }
+        .qr-code { width: 100px; height: 100px; margin: 15px auto; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; background: white; }
+    </style>
+</head>
+<body>
+    <h1>Test QR Code Generation</h1>
+    
+    <div class="test-container">
+        <h3>Test 1: Google Charts API</h3>
+        <div class="qr-code" id="qr1">Loading...</div>
+        <button onclick="testGoogleCharts()">Generate QR</button>
+    </div>
+    
+    <div class="test-container">
+        <h3>Test 2: QRServer API</h3>
+        <div class="qr-code" id="qr2">Loading...</div>
+        <button onclick="testQRServer()">Generate QR</button>
+    </div>
+    
+    <div class="test-container">
+        <h3>Test 3: Sample Transaction Data</h3>
+        <div class="qr-code" id="qr3">Loading...</div>
+        <button onclick="testTransactionData()">Generate QR</button>
+    </div>
+    
+    <script>
+        function testGoogleCharts() {
+            const container = document.getElementById('qr1');
+            const testData = 'KOPERASI: NU Vibes\\nTRX: #000041\\nTEST: Google Charts';
+            
+            try {
+                const img = document.createElement('img');
+                const encodedData = encodeURIComponent(testData);
+                img.src = 'https://chart.googleapis.com/chart?chs=90x90&cht=qr&chl=' + encodedData;
+                img.style.width = '90px';
+                img.style.height = '90px';
+                
+                img.onload = function() {
+                    console.log('Google Charts success');
+                    container.innerHTML = '';
+                    container.appendChild(img);
+                };
+                
+                img.onerror = function() {
+                    console.log('Google Charts failed');
+                    container.innerHTML = 'Failed';
+                };
+            } catch (error) {
+                console.error('Error:', error);
+                container.innerHTML = 'Error';
+            }
+        }
+        
+        function testQRServer() {
+            const container = document.getElementById('qr2');
+            const testData = 'KOPERASI: NU Vibes\\nTRX: #000041\\nTEST: QRServer';
+            
+            try {
+                const img = document.createElement('img');
+                const encodedData = encodeURIComponent(testData);
+                img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=' + encodedData;
+                img.style.width = '90px';
+                img.style.height = '90px';
+                
+                img.onload = function() {
+                    console.log('QRServer success');
+                    container.innerHTML = '';
+                    container.appendChild(img);
+                };
+                
+                img.onerror = function() {
+                    console.log('QRServer failed');
+                    container.innerHTML = 'Failed';
+                };
+            } catch (error) {
+                console.error('Error:', error);
+                container.innerHTML = 'Error';
+            }
+        }
+        
+        function testTransactionData() {
+            const container = document.getElementById('qr3');
+            const testData = 'KOPERASI: NU Vibes\\nTRX: #000041\\nANGGOTA: NUV20250006\\nJENIS: Simpanan Pokok\\nJUMLAH: 100000\\nTGL: 2025-11-08';
+            
+            try {
+                const img = document.createElement('img');
+                const encodedData = encodeURIComponent(testData);
+                img.src = 'https://chart.googleapis.com/chart?chs=90x90&cht=qr&chl=' + encodedData;
+                img.style.width = '90px';
+                img.style.height = '90px';
+                
+                img.onload = function() {
+                    console.log('Transaction data QR success');
+                    container.innerHTML = '';
+                    container.appendChild(img);
+                };
+                
+                img.onerror = function() {
+                    console.log('Transaction data QR failed');
+                    container.innerHTML = 'Failed';
+                };
+            } catch (error) {
+                console.error('Error:', error);
+                container.innerHTML = 'Error';
+            }
+        }
+        
+        // Auto test on load
+        window.onload = function() {
+            setTimeout(function() {
+                testGoogleCharts();
+                testQRServer();
+                testTransactionData();
+            }, 500);
+        };
+    </script>
+</body>
+</html>

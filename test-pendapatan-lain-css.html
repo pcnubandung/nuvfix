@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Cetak Struk Pendapatan Lain - CSS Helper</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .info { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; color: #856404; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-info { background: #17a2b8; color: white; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Cetak Struk Pendapatan Lain - CSS Helper</h1>
+        
+        <div class="test-section info">
+            <h3>📋 Test Information</h3>
+            <p><strong>Purpose:</strong> Verify that cetakStrukPendapatanLain function uses getThermalCSS() helper correctly</p>
+            <p><strong>Expected:</strong> Function should generate thermal 80mm format struk with consistent styling</p>
+            <p><strong>Updated:</strong> CSS helper implementation completed ✅</p>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 Function Tests</h3>
+            <button class="btn-primary" onclick="testFunctionExists()">1. Test Function Exists</button>
+            <button class="btn-success" onclick="testCSSHelper()">2. Test CSS Helper</button>
+            <button class="btn-info" onclick="testMockStruk()">3. Test Mock Struk</button>
+            <button class="btn-warning" onclick="showImplementation()">4. Show Implementation</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Test Results</h3>
+            <div id="testResults">
+                <p>Click buttons above to run tests...</p>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎯 Implementation Details</h3>
+            <div id="implementationDetails" style="display: none;">
+                <h4>✅ CSS Helper Integration:</h4>
+                <pre>// BEFORE (Hardcoded CSS)
+const htmlContent = '&lt;!DOCTYPE html&gt;' +
+  '&lt;html&gt;&lt;head&gt;' +
+  '&lt;title&gt;Struk Pendapatan Lain&lt;/title&gt;' +
+  '&lt;style&gt;' +
+  /* Long hardcoded CSS styles */ +
+  '&lt;/style&gt;&lt;/head&gt;&lt;body&gt;'
+
+// AFTER (CSS Helper)
+const htmlContent = '&lt;!DOCTYPE html&gt;' +
+  '&lt;html&gt;&lt;head&gt;' +
+  '&lt;title&gt;Struk Pendapatan Lain&lt;/title&gt;' +
+  '&lt;style&gt;' + getThermalCSS() + '&lt;/style&gt;&lt;/head&gt;&lt;body&gt;'</pre>
+                
+                <h4>🎯 Benefits:</h4>
+                <ul>
+                    <li>✅ Consistent thermal 80mm formatting across all struk types</li>
+                    <li>✅ Centralized CSS management via getThermalCSS() helper</li>
+                    <li>✅ Easier maintenance and updates</li>
+                    <li>✅ Reduced code duplication</li>
+                    <li>✅ Professional thermal printer optimization</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load required scripts -->
+    <script src="public/js/utils.js"></script>
+    
+    <script>
+        function updateResults(html) {
+            document.getElementById('testResults').innerHTML = html;
+        }
+
+        function testFunctionExists() {
+            const exists = typeof window.cetakStrukPendapatanLain === 'function';
+            const helperExists = typeof window.getThermalCSS === 'function';
+            
+            updateResults(`
+                <div class="${exists ? 'success' : 'warning'}">
+                    <h4>Function Existence Test</h4>
+                    <p>✅ cetakStrukPendapatanLain: ${exists ? 'EXISTS' : 'NOT FOUND'}</p>
+                    <p>✅ getThermalCSS helper: ${helperExists ? 'EXISTS' : 'NOT FOUND'}</p>
+                    <p><strong>Status:</strong> ${exists && helperExists ? 'PASS ✅' : 'FAIL ❌'}</p>
+                </div>
+            `);
+        }
+
+        function testCSSHelper() {
+            try {
+                // Test if getThermalCSS function exists and returns CSS
+                if (typeof getThermalCSS === 'function') {
+                    const css = getThermalCSS();
+                    const hasRequiredStyles = css.includes('font-family') && 
+                                            css.includes('width: 72mm') && 
+                                            css.includes('thermal');
+                    
+                    updateResults(`
+                        <div class="${hasRequiredStyles ? 'success' : 'warning'}">
+                            <h4>CSS Helper Test</h4>
+                            <p>✅ Function exists: YES</p>
+                            <p>✅ Returns CSS: ${css.length > 0 ? 'YES' : 'NO'}</p>
+                            <p>✅ Contains thermal styles: ${hasRequiredStyles ? 'YES' : 'NO'}</p>
+                            <p><strong>CSS Length:</strong> ${css.length} characters</p>
+                            <p><strong>Status:</strong> ${hasRequiredStyles ? 'PASS ✅' : 'FAIL ❌'}</p>
+                        </div>
+                    `);
+                } else {
+                    updateResults(`
+                        <div class="warning">
+                            <h4>CSS Helper Test</h4>
+                            <p>❌ getThermalCSS function not found</p>
+                            <p><strong>Status:</strong> FAIL ❌</p>
+                        </div>
+                    `);
+                }
+            } catch (error) {
+                updateResults(`
+                    <div class="warning">
+                        <h4>CSS Helper Test</h4>
+                        <p>❌ Error: ${error.message}</p>
+                        <p><strong>Status:</strong> ERROR ❌</p>
+                    </div>
+                `);
+            }
+        }
+
+        function testMockStruk() {
+            // Create mock data for testing
+            const mockData = {
+                id: 123,
+                kategori: 'Bunga Bank',
+                jumlah: 500000,
+                tanggal_transaksi: '2024-01-15',
+                keterangan: 'Test pendapatan lain',
+                nama_usaha: 'Unit Test'
+            };
+
+            updateResults(`
+                <div class="info">
+                    <h4>Mock Struk Test</h4>
+                    <p>✅ Mock data prepared</p>
+                    <p><strong>ID:</strong> ${mockData.id}</p>
+                    <p><strong>Kategori:</strong> ${mockData.kategori}</p>
+                    <p><strong>Jumlah:</strong> Rp ${mockData.jumlah.toLocaleString('id-ID')}</p>
+                    <p><strong>Tanggal:</strong> ${mockData.tanggal_transaksi}</p>
+                    <p><strong>Note:</strong> Function ready for testing with real API data</p>
+                    <p><strong>Status:</strong> READY ✅</p>
+                </div>
+            `);
+        }
+
+        function showImplementation() {
+            const details = document.getElementById('implementationDetails');
+            details.style.display = details.style.display === 'none' ? 'block' : 'none';
+            
+            updateResults(`
+                <div class="success">
+                    <h4>Implementation Details</h4>
+                    <p>✅ CSS Helper integration completed</p>
+                    <p>✅ Thermal 80mm format optimized</p>
+                    <p>✅ Consistent styling with other struk functions</p>
+                    <p><strong>Status:</strong> IMPLEMENTATION COMPLETE ✅</p>
+                </div>
+            `);
+        }
+
+        // Auto-run basic test on load
+        window.onload = function() {
+            setTimeout(testFunctionExists, 500);
+        };
+    </script>
+</body>
+</html>

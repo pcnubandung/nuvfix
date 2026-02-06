@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Thermal 80mm Format</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            background: #f0f0f0;
+        }
+        .preview-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .thermal-preview {
+            width: 80mm;
+            background: white;
+            border: 2px solid #333;
+            margin: 20px auto;
+            font-family: "Courier New", monospace;
+            font-size: 11px;
+            line-height: 1.2;
+            padding: 2mm;
+            color: #000;
+        }
+        .header { 
+            text-align: center; 
+            border-bottom: 1px dashed #000; 
+            padding-bottom: 8px; 
+            margin-bottom: 8px; 
+        }
+        .header h2 { 
+            margin: 2px 0; 
+            font-size: 14px; 
+            font-weight: bold; 
+        }
+        .header .address { 
+            margin: 2px 0; 
+            font-size: 9px; 
+            line-height: 1.1; 
+        }
+        .header .contact { 
+            margin: 2px 0; 
+            font-size: 8px; 
+        }
+        .badge { 
+            background: #000; 
+            color: white; 
+            padding: 2px 4px; 
+            font-size: 9px; 
+            font-weight: bold; 
+        }
+        .content { 
+            margin: 8px 0; 
+        }
+        .row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin: 3px 0; 
+            font-size: 10px; 
+        }
+        .row.total { 
+            border-top: 1px dashed #000; 
+            padding-top: 5px; 
+            margin-top: 8px; 
+            font-weight: bold; 
+            font-size: 11px; 
+        }
+        .footer { 
+            text-align: center; 
+            border-top: 1px dashed #000; 
+            padding-top: 8px; 
+            margin-top: 8px; 
+            font-size: 8px; 
+        }
+        .qr-code { 
+            width: 60px; 
+            height: 60px; 
+            margin: 8px auto; 
+            border: 1px solid #000; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            background: white; 
+        }
+        .separator { 
+            border-top: 1px dashed #000; 
+            margin: 5px 0; 
+        }
+        .center { 
+            text-align: center; 
+        }
+        .bold { 
+            font-weight: bold; 
+        }
+        .small { 
+            font-size: 8px; 
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            background: #007bff;
+            color: white;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="preview-container">
+        <h1>Preview Struk Thermal 80mm</h1>
+        <p>Preview format struk untuk printer thermal 80mm dengan QR Code</p>
+        
+        <div class="thermal-preview">
+            <div class="header">
+                <h2>KOPERASI NU VIBES</h2>
+                <div class="address">Gedung Dakwah NU Kota Bandung</div>
+                <div class="contact">Telp: +628211281926</div>
+                <div style="margin-top: 5px;"><span class="badge">STRUK PEMBAYARAN</span></div>
+            </div>
+            
+            <div class="content">
+                <div class="separator"></div>
+                <div class="row"><span>Jenis:</span><span class="bold">Simpanan Pokok</span></div>
+                <div class="row"><span>No.Trx:</span><span class="bold">#000042</span></div>
+                <div class="row"><span>Tanggal:</span><span>8 November 2025</span></div>
+                <div class="separator"></div>
+                <div class="row"><span>No.Anggota:</span><span class="bold">NUV20250016</span></div>
+                <div class="row"><span>Nama:</span><span class="bold">Umar Rosadi</span></div>
+                <div class="row"><span>Metode:</span><span>Transfer</span></div>
+                <div class="separator"></div>
+                <div class="row total center"><span class="bold">JUMLAH BAYAR</span></div>
+                <div class="row total center"><span class="bold">Rp 100.000</span></div>
+            </div>
+            
+            <div class="footer">
+                <div class="separator"></div>
+                <div class="qr-code" id="qrcode">
+                    <img src="https://chart.googleapis.com/chart?chs=60x60&cht=qr&chl=KOPERASI:%20NU%20Vibes%20|%20TRX:%20%23000042%20|%20ANGGOTA:%20NUV20250016%20|%20JENIS:%20Simpanan%20Pokok%20|%20JUMLAH:%20100000%20|%20TGL:%202025-11-08" 
+                         style="width: 55px; height: 55px;" alt="QR Code">
+                </div>
+                <div class="center bold">TERIMA KASIH</div>
+                <div class="center small">Simpan struk sebagai bukti</div>
+                <div class="separator"></div>
+                <div class="center small">Kasir: Administrator</div>
+                <div class="center small">6/1/2026, 13:07:35</div>
+                <div class="center small">Sistem Koperasi NU Vibes v2.0</div>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <button onclick="window.print()">🖨️ Print Preview</button>
+            <button onclick="testActualSize()">📏 Test Actual Size</button>
+            <button onclick="generateNewQR()">🔄 Generate New QR</button>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #e9ecef; border-radius: 5px;">
+            <h3>Spesifikasi Thermal 80mm:</h3>
+            <ul>
+                <li><strong>Lebar Kertas:</strong> 80mm (72mm printable area)</li>
+                <li><strong>Font:</strong> Courier New, 10-11px</li>
+                <li><strong>QR Code:</strong> 60x60px (55px display)</li>
+                <li><strong>Margin:</strong> 2mm all sides</li>
+                <li><strong>Line Height:</strong> 1.2 untuk readability</li>
+                <li><strong>Separator:</strong> Dashed lines untuk section</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        function testActualSize() {
+            const preview = document.querySelector('.thermal-preview');
+            const actualWidth = preview.offsetWidth;
+            const mmWidth = actualWidth * 0.264583; // px to mm conversion
+            
+            alert(`Preview Width: ${actualWidth}px (${mmWidth.toFixed(1)}mm)\\n\\nTarget: 80mm thermal paper\\nPrintable area: ~72mm`);
+        }
+        
+        function generateNewQR() {
+            const qrImg = document.querySelector('#qrcode img');
+            const timestamp = new Date().getTime();
+            const newData = `KOPERASI: NU Vibes | TRX: #${timestamp.toString().slice(-6)} | TEST: ${timestamp}`;
+            const encodedData = encodeURIComponent(newData);
+            
+            qrImg.src = `https://chart.googleapis.com/chart?chs=60x60&cht=qr&chl=${encodedData}`;
+            
+            console.log('New QR Data:', newData);
+        }
+        
+        // Test QR Code loading
+        window.onload = function() {
+            const qrImg = document.querySelector('#qrcode img');
+            qrImg.onload = function() {
+                console.log('✅ QR Code loaded successfully');
+            };
+            qrImg.onerror = function() {
+                console.log('❌ QR Code failed to load');
+                document.getElementById('qrcode').innerHTML = '<div style="font-size: 7px; text-align: center; padding: 8px;">QR Code<br>Error</div>';
+            };
+        };
+    </script>
+</body>
+</html>

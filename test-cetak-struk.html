@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Cetak Struk</title>
+</head>
+<body>
+    <h1>Test Cetak Struk Function</h1>
+    <button onclick="testCetakStruk()">Test Cetak Struk</button>
+    <button onclick="testConsole()">Test Console</button>
+    
+    <script src="js/utils.js"></script>
+    <script>
+        // Test function
+        function testCetakStruk() {
+            console.log('Testing cetakStruk function...');
+            
+            // Check if function exists
+            if (typeof window.cetakStruk === 'function') {
+                console.log('✅ cetakStruk function exists');
+                alert('cetakStruk function exists and is callable');
+            } else {
+                console.log('❌ cetakStruk function NOT found');
+                alert('ERROR: cetakStruk function not found!');
+            }
+        }
+        
+        function testConsole() {
+            console.log('Console test - this should appear in browser console');
+            alert('Check browser console for test message');
+        }
+        
+        // Check if utils.js loaded
+        window.onload = function() {
+            console.log('Page loaded, checking functions...');
+            console.log('cetakStruk exists:', typeof window.cetakStruk);
+            console.log('cetakStrukPengeluaran exists:', typeof window.cetakStrukPengeluaran);
+            console.log('cetakStrukPendapatanLain exists:', typeof window.cetakStrukPendapatanLain);
+        };
+    </script>
+</body>
+</html>

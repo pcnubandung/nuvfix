@@ -938,12 +938,13 @@ async function renderLaporan() {
     const totalPengeluaran = biayaOperasional; // Untuk tampilan stat card
     const labaBersih = labaKotor - biayaOperasional;
     
-    const kasBank = totalSimpanan + labaBersih - persediaan - aktivaTetap;
-    const totalAktiva = kasBank + persediaan + aktivaTetap;
-    
-    // PASIVA
+    // PASIVA - hitung cadangan dulu
     let cadangan = 0; // Simplified for member portal
     const shuTahunBerjalan = labaBersih;
+    
+    // Kas & Bank = Total Simpanan + Laba Bersih + Cadangan - Persediaan - Aktiva Tetap
+    const kasBank = totalSimpanan + labaBersih + cadangan - persediaan - aktivaTetap;
+    const totalAktiva = kasBank + persediaan + aktivaTetap;
     
     const totalPasiva = totalSimpananPokok + totalSimpananWajib + totalSimpananKhusus + totalSimpananSukarela + cadangan + shuTahunBerjalan;
     
@@ -1398,6 +1399,7 @@ function renderSimpananTable(title, data) {
             <th>Metode</th>
             <th>Status</th>
             <th>Keterangan</th>
+            <th>Aksi</th>
           </tr>
         </thead>
         <tbody>
@@ -1412,6 +1414,12 @@ function renderSimpananTable(title, data) {
               ? `<div>${s.keterangan || '-'}</div><div style="color: #d32f2f; font-size: 12px; margin-top: 4px;"><strong>Alasan Ditolak:</strong> ${s.rejection_reason}</div>`
               : (s.keterangan || '-');
             
+            const downloadButton = (s.status === 'approved' || !s.status) 
+              ? `<button class="btn btn-sm btn-success" onclick="downloadStrukSimpanan('${s.id}', '${title}', '${s.tanggal_transaksi}', '${s.jumlah}', '${s.metode_pembayaran || 'Tunai'}')" title="Download Struk">
+                   <i data-feather="download"></i>
+                 </button>`
+              : '<span style="color: #999; font-size: 12px;">-</span>';
+            
             return `
               <tr style="${s.status === 'rejected' ? 'background: #ffebee;' : ''}">
                 <td>${formatDate(s.tanggal_transaksi)}</td>
@@ -1419,11 +1427,12 @@ function renderSimpananTable(title, data) {
                 <td>${s.metode_pembayaran || '-'}</td>
                 <td>${statusBadge}</td>
                 <td>${keterangan}</td>
+                <td style="text-align: center;">${downloadButton}</td>
               </tr>
             `;
           }).join('')}
           <tr style="background: var(--member-bg); font-weight: 700;">
-            <td colspan="2">TOTAL DISETUJUI</td>
+            <td colspan="3">TOTAL DISETUJUI</td>
             <td colspan="3"><strong>${formatCurrency(totalApproved)}</strong></td>
           </tr>
         </tbody>
@@ -1545,22 +1554,32 @@ async function renderTransaksi() {
                 <th>Jumlah</th>
                 <th>Metode</th>
                 <th>Keterangan</th>
+                <th>Aksi</th>
               </tr>
             </thead>
             <tbody>
-              ${allTransactions.map(t => `
-                <tr>
-                  <td>${formatDate(t.tanggal_transaksi)}</td>
-                  <td>
-                    <span class="badge badge-${t.type === 'simpanan' ? 'success' : 'warning'}">
-                      ${t.jenis}
-                    </span>
-                  </td>
-                  <td><strong>${formatCurrency(t.jumlah)}</strong></td>
-                  <td>${t.metode_pembayaran || '-'}</td>
-                  <td>${t.keterangan || '-'}</td>
-                </tr>
-              `).join('')}
+              ${allTransactions.map(t => {
+                const downloadButton = (t.type === 'simpanan' && (t.status === 'approved' || !t.status))
+                  ? `<button class="btn btn-sm btn-success" onclick="downloadStrukSimpanan('${t.id}', '${t.jenis}', '${t.tanggal_transaksi}', '${t.jumlah}', '${t.metode_pembayaran || 'Tunai'}')" title="Download Struk">
+                       <i data-feather="download"></i>
+                     </button>`
+                  : '<span style="color: #999; font-size: 12px;">-</span>';
+                
+                return `
+                  <tr>
+                    <td>${formatDate(t.tanggal_transaksi)}</td>
+                    <td>
+                      <span class="badge badge-${t.type === 'simpanan' ? 'success' : 'warning'}">
+                        ${t.jenis}
+                      </span>
+                    </td>
+                    <td><strong>${formatCurrency(t.jumlah)}</strong></td>
+                    <td>${t.metode_pembayaran || '-'}</td>
+                    <td>${t.keterangan || '-'}</td>
+                    <td style="text-align: center;">${downloadButton}</td>
+                  </tr>
+                `;
+              }).join('')}
             </tbody>
           </table>
         ` : `
@@ -2504,3 +2523,367 @@ window.closeCameraMember = function() {
 };
 
 console.log('=== CAMERA FUNCTIONS FOR MEMBER LOADED ===');
+
+// ===== DOWNLOAD STRUK PEMBAYARAN =====
+
+// Download struk pembayaran simpanan
+window.downloadStrukSimpanan = async function(transaksiId, jenisSimpanan, tanggal, jumlah, metode) {
+  try {
+    // Get koperasi info and member data
+    const koperasiInfo = await API.get('/api/koperasi-info');
+    
+    if (!memberData) {
+      alert('Data member tidak ditemukan');
+      return;
+    }
+    
+    // Create struk content
+    const strukContent = generateStrukHTML({
+      koperasiInfo,
+      memberData,
+      transaksi: {
+        id: transaksiId,
+        jenis: jenisSimpanan,
+        tanggal: tanggal,
+        jumlah: parseFloat(jumlah),
+        metode: metode
+      }
+    });
+    
+    // Open print window
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    printWindow.document.write(strukContent);
+    printWindow.document.close();
+    
+    // Auto print after content loads
+    printWindow.onload = function() {
+      printWindow.print();
+    };
+    
+  } catch (error) {
+    console.error('Error downloading struk:', error);
+    alert('Gagal mendownload struk pembayaran: ' + error.message);
+  }
+};
+
+// Generate HTML content for struk pembayaran
+function generateStrukHTML(data) {
+  const { koperasiInfo, memberData, transaksi } = data;
+  const currentDate = new Date().toLocaleString('id-ID');
+  
+  // Generate QR Code data with optimized format (shorter but readable)
+  const qrData = `KOPERASI: ${koperasiInfo.nama_koperasi || 'NU Vibes'}\\nTRX: #${String(transaksi.id).padStart(6, '0')}\\nANGGOTA: ${memberData.nomor_anggota}\\nJENIS: ${transaksi.jenis}\\nJUMLAH: ${transaksi.jumlah}\\nTGL: ${transaksi.tanggal}`;
+  
+  // Escape single quotes in qrData for safe injection
+  const safeQrData = qrData.replace(/'/g, "\\'");
+  const transactionId = String(transaksi.id).padStart(6, '0');
+  const memberNumber = memberData.nomor_anggota;
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Struk Pembayaran ${transaksi.jenis}</title>
+      <meta charset="UTF-8">
+      <style>
+        body {
+          font-family: 'Courier New', monospace;
+          max-width: 400px;
+          margin: 20px auto;
+          padding: 20px;
+          background: white;
+          color: #333;
+        }
+        .header {
+          text-align: center;
+          border-bottom: 2px dashed #333;
+          padding-bottom: 15px;
+          margin-bottom: 20px;
+        }
+        .header h2 {
+          margin: 8px 0 5px 0;
+          font-size: 18px;
+          color: #2E7D32;
+          font-weight: bold;
+        }
+        .header .address {
+          margin: 5px 0;
+          font-size: 13px;
+          color: #555;
+          line-height: 1.3;
+        }
+        .header .contact {
+          margin: 8px 0 5px 0;
+          font-size: 12px;
+          color: #666;
+        }
+        .struk-info {
+          margin-bottom: 20px;
+        }
+        .struk-row {
+          display: flex;
+          justify-content: space-between;
+          margin: 8px 0;
+          font-size: 14px;
+        }
+        .struk-row.total {
+          border-top: 1px dashed #333;
+          padding-top: 10px;
+          margin-top: 15px;
+          font-weight: bold;
+          font-size: 16px;
+        }
+        .footer {
+          text-align: center;
+          border-top: 2px dashed #333;
+          padding-top: 15px;
+          margin-top: 20px;
+          font-size: 12px;
+          color: #666;
+        }
+        .badge {
+          background: #2E7D32;
+          color: white;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 12px;
+          font-weight: bold;
+        }
+        .qr-code {
+          width: 100px;
+          height: 100px;
+          margin: 15px auto;
+          border: 1px solid #ddd;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: white;
+          position: relative;
+        }
+        .qr-code canvas {
+          width: 90px !important;
+          height: 90px !important;
+        }
+        .qr-fallback {
+          font-size: 10px;
+          color: #999;
+          text-align: center;
+          padding: 20px;
+          line-height: 1.2;
+        }
+        @media print {
+          body { margin: 0; padding: 10px; }
+          .no-print { display: none; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h2>${koperasiInfo.nama_koperasi || 'Koperasi NU Vibes'}</h2>
+        <div class="address">${koperasiInfo.alamat || 'Gedung Dakwah NU Kota Bandung, Jl. Sancang No. 8 Kota Bandung'}</div>
+        <div class="contact">Telp: ${koperasiInfo.nomor_telpon || '+628211281926'} | Email: ${koperasiInfo.email || 'koperasi@nukotabandung.or.id'}</div>
+        <div style="margin-top: 12px;">
+          <span class="badge">STRUK PEMBAYARAN</span>
+        </div>
+      </div>
+      
+      <div class="struk-info">
+        <div class="struk-row">
+          <span>No. Transaksi:</span>
+          <span><strong>#${transactionId}</strong></span>
+        </div>
+        <div class="struk-row">
+          <span>Tanggal:</span>
+          <span>${formatDate(transaksi.tanggal)}</span>
+        </div>
+        <div class="struk-row">
+          <span>Waktu Cetak:</span>
+          <span>${currentDate}</span>
+        </div>
+      </div>
+      
+      <div class="struk-info">
+        <div class="struk-row">
+          <span>No. Anggota:</span>
+          <span><strong>${memberData.nomor_anggota}</strong></span>
+        </div>
+        <div class="struk-row">
+          <span>Nama:</span>
+          <span><strong>${memberData.nama_lengkap}</strong></span>
+        </div>
+        <div class="struk-row">
+          <span>Telepon:</span>
+          <span>${memberData.nomor_telpon || '08557556777'}</span>
+        </div>
+      </div>
+      
+      <div class="struk-info">
+        <div class="struk-row">
+          <span>Jenis Transaksi:</span>
+          <span><strong>${transaksi.jenis}</strong></span>
+        </div>
+        <div class="struk-row">
+          <span>Metode Pembayaran:</span>
+          <span>${transaksi.metode}</span>
+        </div>
+        <div class="struk-row total">
+          <span>JUMLAH BAYAR:</span>
+          <span><strong>${formatCurrency(transaksi.jumlah)}</strong></span>
+        </div>
+      </div>
+      
+      <div class="footer">
+        <div class="qr-code" id="qrcode">
+          <div class="qr-fallback">QR Code<br>Loading...</div>
+        </div>
+        <p><strong>TERIMA KASIH</strong></p>
+        <p>Simpan struk ini sebagai bukti pembayaran</p>
+        <p>Untuk informasi lebih lanjut hubungi customer service</p>
+        <p style="margin-top: 15px; font-size: 10px;">
+          Dicetak pada: ${currentDate}<br>
+          Sistem Koperasi NU Vibes v2.0
+        </p>
+      </div>
+      
+      <div class="no-print" style="text-align: center; margin-top: 20px;">
+        <button onclick="window.print()" style="padding: 10px 20px; background: #2E7D32; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">
+          <span>🖨️ Cetak Ulang</span>
+        </button>
+        <button onclick="window.close()" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">
+          <span>❌ Tutup</span>
+        </button>
+      </div>
+      
+      <!-- QR Code Libraries -->
+      <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+      
+      <script>
+        // QR Code data (injected safely)
+        const qrData = '${safeQrData}';
+        const qrContainer = document.getElementById('qrcode');
+        const transactionId = '${transactionId}';
+        const memberNumber = '${memberNumber}';
+        
+        // Method 1: Try QRCode library
+        function generateQRWithQRCode() {
+          return new Promise((resolve, reject) => {
+            if (typeof QRCode !== 'undefined') {
+              const canvas = document.createElement('canvas');
+              QRCode.toCanvas(canvas, qrData, {
+                width: 90,
+                height: 90,
+                margin: 1,
+                color: {
+                  dark: '#000000',
+                  light: '#FFFFFF'
+                }
+              }, function (error) {
+                if (error) {
+                  reject(error);
+                } else {
+                  resolve(canvas);
+                }
+              });
+            } else {
+              reject(new Error('QRCode library not available'));
+            }
+          });
+        }
+        
+        // Method 2: Try QRious library
+        function generateQRWithQRious() {
+          return new Promise((resolve, reject) => {
+            if (typeof QRious !== 'undefined') {
+              try {
+                const qr = new QRious({
+                  value: qrData,
+                  size: 90,
+                  background: 'white',
+                  foreground: 'black'
+                });
+                resolve(qr.canvas);
+              } catch (error) {
+                reject(error);
+              }
+            } else {
+              reject(new Error('QRious library not available'));
+            }
+          });
+        }
+        
+        // Method 3: Use Google Charts API as fallback
+        function generateQRWithGoogle() {
+          return new Promise((resolve, reject) => {
+            try {
+              const img = document.createElement('img');
+              const encodedData = encodeURIComponent(qrData);
+              img.src = 'https://chart.googleapis.com/chart?chs=90x90&cht=qr&chl=' + encodedData;
+              img.style.width = '90px';
+              img.style.height = '90px';
+              
+              img.onload = function() { resolve(img); };
+              img.onerror = function() { reject(new Error('Google Charts API failed')); };
+            } catch (error) {
+              reject(error);
+            }
+          });
+        }
+        
+        // Try to generate QR code with fallbacks
+        async function generateQRCode() {
+          console.log('Starting QR Code generation...');
+          console.log('QR Data:', qrData);
+          console.log('QR Data length:', qrData.length);
+          
+          try {
+            console.log('Trying QRCode library...');
+            const canvas1 = await generateQRWithQRCode();
+            qrContainer.innerHTML = '';
+            qrContainer.appendChild(canvas1);
+            console.log('QR Code generated with QRCode library');
+            return;
+          } catch (error) {
+            console.log('QRCode library failed:', error.message);
+          }
+          
+          try {
+            console.log('Trying QRious library...');
+            const canvas2 = await generateQRWithQRious();
+            qrContainer.innerHTML = '';
+            qrContainer.appendChild(canvas2);
+            console.log('QR Code generated with QRious library');
+            return;
+          } catch (error) {
+            console.log('QRious library failed:', error.message);
+          }
+          
+          try {
+            console.log('Trying Google Charts API...');
+            const img = await generateQRWithGoogle();
+            qrContainer.innerHTML = '';
+            qrContainer.appendChild(img);
+            console.log('QR Code generated with Google Charts API');
+            return;
+          } catch (error) {
+            console.log('Google Charts API failed:', error.message);
+          }
+          
+          // All methods failed - show fallback
+          console.log('All QR generation methods failed, showing fallback');
+          qrContainer.innerHTML = '<div class="qr-fallback">QR Code<br>Unavailable<br><small>TRX: #' + transactionId + '<br>' + memberNumber + '</small></div>';
+          console.log('All QR Code generation methods failed');
+        }
+        
+        // Generate QR code when page loads
+        window.onload = function() {
+          console.log('Page loaded, starting QR generation in 500ms...');
+          setTimeout(generateQRCode, 500);
+        };
+      </script>
+    </body>
+    </html>
+  `;
+}
+
+console.log('✅ Download struk pembayaran feature loaded successfully');

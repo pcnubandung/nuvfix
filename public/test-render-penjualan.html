@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Render Penjualan</title>
+</head>
+<body>
+  <h1>Test Render Penjualan</h1>
+  <div id="contentArea"></div>
+  <button onclick="testRenderPenjualan()">Test Render Penjualan</button>
+  
+  <script>
+    // Mock API
+    window.API = {
+      get: async (url) => {
+        console.log('Mock API call:', url);
+        if (url.includes('penjualan')) {
+          return [
+            {
+              id: 1,
+              tanggal_transaksi: '2024-01-01',
+              nama_usaha: 'Test Unit',
+              jumlah_penjualan: 100000,
+              hpp: 50000,
+              keuntungan: 50000,
+              keterangan: 'Test'
+            }
+          ];
+        }
+        if (url.includes('unit-usaha')) {
+          return [
+            { id: 1, nama_usaha: 'Test Unit' }
+          ];
+        }
+        return [];
+      }
+    };
+    
+    // Mock functions
+    window.formatCurrency = (amount) => 'Rp ' + amount.toLocaleString('id-ID');
+    window.formatDate = (date) => date;
+    window.feather = { replace: () => {} };
+    window.contentArea = document.getElementById('contentArea');
+    
+    function testRenderPenjualan() {
+      console.log('Testing renderPenjualan...');
+      if (typeof window.renderPenjualan === 'function') {
+        console.log('renderPenjualan function found!');
+        window.renderPenjualan();
+      } else {
+        console.error('renderPenjualan function NOT found!');
+        console.log('Available functions:', Object.keys(window).filter(key => key.includes('render')));
+      }
+    }
+  </script>
+  
+  <!-- Load the actual script -->
+  <script src="js/pages-transaksi.js"></script>
+  
+  <script>
+    // Test after script loads
+    setTimeout(() => {
+      console.log('Checking if renderPenjualan is available...');
+      console.log('window.renderPenjualan:', typeof window.renderPenjualan);
+    }, 1000);
+  </script>
+</body>
+</html>

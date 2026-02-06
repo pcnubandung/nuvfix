@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnosa SHU 2025 - Mengapa Hasilnya 0?</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .info { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; color: #856404; }
+        .danger { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .checklist { list-style: none; padding: 0; }
+        .checklist li { padding: 8px 0; border-bottom: 1px solid #eee; }
+        .checklist li:before { content: "❌ "; color: #dc3545; font-weight: bold; }
+        .checklist li.check:before { content: "✅ "; color: #28a745; }
+        .formula { background: #f8f9fa; padding: 15px; border-left: 4px solid #007bff; margin: 10px 0; font-family: monospace; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; font-size: 12px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f8f9fa; font-weight: bold; }
+        .highlight { background: #fff3cd; padding: 2px 4px; border-radius: 3px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Diagnosa SHU 2025 - Mengapa Hasilnya 0?</h1>
+        
+        <div class="test-section danger">
+            <h3>⚠️ Masalah Teridentifikasi</h3>
+            <p><strong>Gejala:</strong> Perhitungan SHU tahun 2025 menghasilkan nilai 0 (nol) untuk semua anggota</p>
+            <p><strong>Dampak:</strong> Anggota tidak mendapat pembagian SHU yang seharusnya</p>
+            <p><strong>Urgensi:</strong> Tinggi - Mempengaruhi hak anggota koperasi</p>
+        </div>
+
+        <div class="test-section info">
+            <h3>📋 Rumus Perhitungan SHU</h3>
+            <div class="formula">
+                <strong>SHU Tahun Berjalan = Laba Kotor - Biaya Operasional</strong><br>
+                <em>Catatan: Pembelian Barang & Aset tidak termasuk biaya operasional</em>
+            </div>
+            
+            <div class="formula">
+                <strong>Laba Kotor = Total Pendapatan - HPP (Harga Pokok Penjualan)</strong><br>
+                <strong>Total Pendapatan = Penjualan + Pendapatan Lain</strong>
+            </div>
+            
+            <div class="formula">
+                <strong>Biaya Operasional = Total Pengeluaran - Pembelian Barang - Pembelian Aset</strong>
+            </div>
+        </div>
+
+        <div class="test-section warning">
+            <h3>🔍 Kemungkinan Penyebab SHU = 0</h3>
+            <ul class="checklist">
+                <li>Tidak ada data transaksi penjualan tahun 2025</li>
+                <li>Tidak ada data pendapatan lain tahun 2025</li>
+                <li>Total pengeluaran operasional sama dengan atau lebih besar dari laba kotor</li>
+                <li>Komponen SHU belum diatur untuk tahun 2025</li>
+                <li>Data simpanan anggota kosong untuk tahun 2025</li>
+                <li>Data partisipasi transaksi anggota kosong</li>
+                <li>Error dalam perhitungan backend API</li>
+                <li>Database tidak memiliki data transaksi 2025</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 Langkah Diagnosa</h3>
+            
+            <h4>1. Periksa Data Transaksi 2025</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Jenis Data</th>
+                        <th>Yang Harus Diperiksa</th>
+                        <th>Menu</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Penjualan</td>
+                        <td>Ada transaksi penjualan tahun 2025?</td>
+                        <td>Transaksi → Penjualan</td>
+                        <td class="highlight">PERIKSA</td>
+                    </tr>
+                    <tr>
+                        <td>Pendapatan Lain</td>
+                        <td>Ada pendapatan lain tahun 2025?</td>
+                        <td>Transaksi → Pendapatan Lain</td>
+                        <td class="highlight">PERIKSA</td>
+                    </tr>
+                    <tr>
+                        <td>Pengeluaran</td>
+                        <td>Ada pengeluaran operasional 2025?</td>
+                        <td>Transaksi → Pengeluaran</td>
+                        <td class="highlight">PERIKSA</td>
+                    </tr>
+                    <tr>
+                        <td>Simpanan</td>
+                        <td>Ada simpanan anggota tahun 2025?</td>
+                        <td>Simpanan → Semua Jenis</td>
+                        <td class="highlight">PERIKSA</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>2. Periksa Komponen SHU</h4>
+            <ul>
+                <li>Buka menu <strong>SHU</strong></li>
+                <li>Pilih tahun <strong>2025</strong></li>
+                <li>Klik <strong>"Atur Komponen SHU"</strong></li>
+                <li>Pastikan total persentase = 100%</li>
+                <li>Simpan komponen jika belum ada</li>
+            </ul>
+
+            <h4>3. Periksa Perhitungan Manual</h4>
+            <div class="formula">
+                <strong>Contoh Perhitungan:</strong><br>
+                Penjualan 2025: Rp 100,000,000<br>
+                Pendapatan Lain 2025: Rp 10,000,000<br>
+                Total Pendapatan: Rp 110,000,000<br><br>
+                
+                Pengeluaran Operasional 2025: Rp 80,000,000<br>
+                (Tidak termasuk pembelian barang & aset)<br><br>
+                
+                <strong>SHU = Rp 110,000,000 - Rp 80,000,000 = Rp 30,000,000</strong>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🛠️ Solusi Berdasarkan Penyebab</h3>
+            
+            <h4>Jika Tidak Ada Data Transaksi 2025:</h4>
+            <ul>
+                <li>Input data penjualan tahun 2025</li>
+                <li>Input data pendapatan lain tahun 2025</li>
+                <li>Input data pengeluaran tahun 2025</li>
+                <li>Pastikan tanggal transaksi benar (tahun 2025)</li>
+            </ul>
+
+            <h4>Jika Data Ada Tapi SHU Tetap 0:</h4>
+            <ul>
+                <li>Periksa kategori pengeluaran - pastikan pembelian barang/aset dikategorikan dengan benar</li>
+                <li>Periksa apakah biaya operasional terlalu besar</li>
+                <li>Periksa perhitungan laba kotor</li>
+                <li>Reset SHU tahun 2025 dan hitung ulang</li>
+            </ul>
+
+            <h4>Jika Komponen SHU Belum Diatur:</h4>
+            <ul>
+                <li>Klik "Atur Komponen SHU"</li>
+                <li>Set persentase sesuai AD/ART koperasi</li>
+                <li>Pastikan total = 100%</li>
+                <li>Simpan komponen</li>
+                <li>Hitung ulang SHU</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Template Komponen SHU Standar</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Komponen</th>
+                        <th>Persentase Umum</th>
+                        <th>Keterangan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Cadangan</td>
+                        <td>40%</td>
+                        <td>Dana cadangan koperasi</td>
+                    </tr>
+                    <tr>
+                        <td>Jasa Simpanan</td>
+                        <td>25%</td>
+                        <td>Dibagi ke anggota berdasarkan simpanan</td>
+                    </tr>
+                    <tr>
+                        <td>Jasa Transaksi</td>
+                        <td>15%</td>
+                        <td>Dibagi ke anggota berdasarkan transaksi</td>
+                    </tr>
+                    <tr>
+                        <td>Pengurus & Pengawas</td>
+                        <td>5%</td>
+                        <td>Insentif pengurus</td>
+                    </tr>
+                    <tr>
+                        <td>Pegawai</td>
+                        <td>5%</td>
+                        <td>Insentif pegawai</td>
+                    </tr>
+                    <tr>
+                        <td>Dana Pendidikan</td>
+                        <td>5%</td>
+                        <td>Program pendidikan anggota</td>
+                    </tr>
+                    <tr>
+                        <td>Dana Sosial</td>
+                        <td>3%</td>
+                        <td>Kegiatan sosial</td>
+                    </tr>
+                    <tr>
+                        <td>Dana Pengembangan</td>
+                        <td>2%</td>
+                        <td>Pengembangan usaha</td>
+                    </tr>
+                    <tr style="background: #f8f9fa; font-weight: bold;">
+                        <td>TOTAL</td>
+                        <td>100%</td>
+                        <td>Harus tepat 100%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="test-section success">
+            <h3>✅ Langkah Perbaikan</h3>
+            <ol>
+                <li><strong>Periksa Data Dasar:</strong>
+                    <ul>
+                        <li>Pastikan ada transaksi penjualan tahun 2025</li>
+                        <li>Pastikan ada data simpanan anggota</li>
+                        <li>Periksa kategori pengeluaran sudah benar</li>
+                    </ul>
+                </li>
+                <li><strong>Atur Komponen SHU:</strong>
+                    <ul>
+                        <li>Buka menu SHU → pilih tahun 2025</li>
+                        <li>Klik "Atur Komponen SHU"</li>
+                        <li>Set persentase total = 100%</li>
+                    </ul>
+                </li>
+                <li><strong>Hitung Ulang:</strong>
+                    <ul>
+                        <li>Klik "Hitung SHU" untuk tahun 2025</li>
+                        <li>Periksa hasil perhitungan</li>
+                        <li>Jika masih 0, periksa data transaksi</li>
+                    </ul>
+                </li>
+                <li><strong>Verifikasi:</strong>
+                    <ul>
+                        <li>Periksa apakah SHU per anggota sudah muncul</li>
+                        <li>Cetak struk SHU untuk testing</li>
+                        <li>Export data SHU untuk validasi</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <div class="test-section info">
+            <h3>📞 Bantuan Teknis</h3>
+            <p><strong>Jika masalah masih berlanjut:</strong></p>
+            <ul>
+                <li>Periksa console browser untuk error messages</li>
+                <li>Periksa network tab untuk failed API calls</li>
+                <li>Backup data sebelum melakukan reset SHU</li>
+                <li>Hubungi administrator sistem untuk bantuan backend</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔍 Diagnosa SHU 2025 loaded');
+            console.log('📋 Checklist:');
+            console.log('1. Periksa data transaksi 2025');
+            console.log('2. Periksa komponen SHU 2025');
+            console.log('3. Periksa perhitungan manual');
+            console.log('4. Hitung ulang SHU');
+            
+            // Highlight current year
+            const currentYear = new Date().getFullYear();
+            if (currentYear === 2025) {
+                console.log('⚠️ Tahun 2025 adalah tahun berjalan');
+            } else {
+                console.log('ℹ️ Tahun 2025 adalah tahun yang akan datang');
+            }
+        });
+    </script>
+</body>
+</html>
