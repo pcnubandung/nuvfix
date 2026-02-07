@@ -1,5 +1,9 @@
 // Email Service using Nodemailer
 const nodemailer = require('nodemailer');
+const dns = require('dns');
+
+// Force DNS to use IPv4
+dns.setDefaultResultOrder('ipv4first');
 
 // Email configuration
 const EMAIL_CONFIG = {
@@ -7,13 +11,18 @@ const EMAIL_CONFIG = {
   port: parseInt(process.env.EMAIL_PORT) || 587,
   secure: process.env.EMAIL_SECURE === 'true', // true for 465, false for other ports
   family: 4, // Force IPv4
+  dnsTimeout: 10000, // 10 seconds DNS timeout
+  connectionTimeout: 30000, // 30 seconds connection timeout
   auth: {
     user: process.env.EMAIL_USER || 'nuvibes@nukotabandung.or.id',
     pass: process.env.EMAIL_PASSWORD || ''
   },
   tls: {
-    rejectUnauthorized: false // Accept self-signed certificates
-  }
+    rejectUnauthorized: false, // Accept self-signed certificates
+    minVersion: 'TLSv1.2'
+  },
+  debug: true, // Enable debug logs
+  logger: true // Enable logger
 };
 
 const EMAIL_FROM = process.env.EMAIL_FROM || 'Koperasi NU Vibes <nuvibes@nukotabandung.or.id>';
@@ -26,6 +35,7 @@ function getTransporter() {
     transporter = nodemailer.createTransport(EMAIL_CONFIG);
     console.log('📧 Email transporter created');
     console.log('   Using IPv4 only');
+    console.log('   DNS order: IPv4 first');
   }
   return transporter;
 }
