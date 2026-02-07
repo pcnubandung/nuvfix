@@ -52,6 +52,13 @@ router.post('/', upload.fields([
       
       const anggotaId = this.lastID;
       
+      console.log('✅ Anggota created with ID:', anggotaId);
+      console.log('📧 Email notification check:');
+      console.log('  - Email provided:', email ? 'Yes' : 'No');
+      console.log('  - Email value:', email);
+      console.log('  - ENABLE_EMAIL_NOTIFICATIONS:', process.env.ENABLE_EMAIL_NOTIFICATIONS);
+      console.log('  - Will send email:', email && process.env.ENABLE_EMAIL_NOTIFICATIONS === 'true' ? 'Yes' : 'No');
+      
       // Send welcome email if email is provided and notifications are enabled
       if (email && process.env.ENABLE_EMAIL_NOTIFICATIONS === 'true') {
         try {
@@ -64,10 +71,18 @@ router.post('/', upload.fields([
           };
           
           console.log('📧 Sending welcome email to:', email);
-          await emailService.sendWelcomeEmail(anggotaData);
+          const result = await emailService.sendWelcomeEmail(anggotaData);
+          console.log('📧 Email send result:', result);
         } catch (emailError) {
           console.error('❌ Failed to send welcome email:', emailError.message);
+          console.error('   Stack:', emailError.stack);
           // Don't fail the request if email fails
+        }
+      } else {
+        if (!email) {
+          console.log('⚠️ No email provided, skipping notification');
+        } else if (process.env.ENABLE_EMAIL_NOTIFICATIONS !== 'true') {
+          console.log('⚠️ Email notifications disabled, skipping');
         }
       }
       
