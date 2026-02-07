@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('./database');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
+const emailService = require('../helpers/email-service');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => { cb(null, 'uploads/'); },
@@ -46,11 +47,33 @@ router.post('/', upload.fields([
   db.run(`INSERT INTO anggota (nomor_anggota, nama_lengkap, nik, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat, nomor_telpon, email, pekerjaan, foto, foto_ktp, tanggal_bergabung, username, password) 
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [nomor_anggota, nama_lengkap, nik, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat, nomor_telpon, email, pekerjaan, foto, foto_ktp, tanggal_bergabung, username, hashedPassword],
-    function(err) {
+    async function(err) {
       if (err) return res.status(500).json({ error: err.message });
+      
+      const anggotaId = this.lastID;
+      
+      // Send welcome email if email is provided and notifications are enabled
+      if (email && process.env.ENABLE_EMAIL_NOTIFICATIONS === 'true') {
+        try {
+          const anggotaData = {
+            id: anggotaId,
+            nomor_anggota,
+            nama_lengkap,
+            email,
+            username: username || email
+          };
+          
+          console.log('📧 Sending welcome email to:', email);
+          await emailService.sendWelcomeEmail(anggotaData);
+        } catch (emailError) {
+          console.error('❌ Failed to send welcome email:', emailError.message);
+          // Don't fail the request if email fails
+        }
+      }
+      
       res.json({ 
         message: 'Anggota berhasil ditambahkan', 
-        id: this.lastID,
+        id: anggotaId,
         foto: foto,
         foto_ktp: foto_ktp
       });
@@ -65,6 +88,14 @@ router.put('/:id', upload.fields([
 ]), async (req, res) => {
   const { id } = req.params;
   const { nomor_anggota, nama_lengkap, nik, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat, nomor_telpon, email, pekerjaan, tanggal_bergabung, status, username, password } = req.body;
+  
+  // Get old status before update (for email notification)
+  const oldAnggota = await new Promise((resolve, reject) => {
+    db.get('SELECT status, email, nama_lengkap, nomor_anggota, username FROM anggota WHERE id = ?', [id], (err, row) => {
+      if (err) reject(err);
+      else resolve(row);
+    });
+  });
   
   // Get uploaded files
   const foto = req.files && req.files['foto'] ? req.files['foto'][0].filename : null;
@@ -113,7 +144,7 @@ router.put('/:id', upload.fields([
   query += ' WHERE id = ?';
   params.push(id);
 
-  db.run(query, params, function(err) {
+  db.run(query, params, async function(err) {
     if (err) {
       console.error('❌ Update anggota error:', err);
       return res.status(500).json({ error: err.message });
@@ -123,8 +154,33 @@ router.put('/:id', upload.fields([
     console.log('Foto:', foto);
     console.log('Foto KTP:', foto_ktp);
     
+    // Send account activated email if status changed from non-aktif to aktif
+    if (oldAnggota && oldAnggota.status !== 'aktif' && status === 'aktif' && email && process.env.ENABLE_EMAIL_NOTIFICATIONS === 'true') {
+      try {
+        const anggotaData = {
+          id,
+          nomor_anggota: nomor_anggota || oldAnggota.nomor_anggota,
+          nama_lengkap: nama_lengkap || oldAnggota.nama_lengkap,
+          email,
+          username: username || oldAnggota.username || email
+        };
+        
+        console.log('📧 Sending account activated email to:', email);
+        await emailService.sendAccountActivatedEmail(anggotaData);
+      } catch (emailError) {
+        console.error('❌ Failed to send activation email:', emailError.message);
+        // Don't fail the request if email fails
+      }
+    }
+    
     res.json({ 
       message: 'Anggota berhasil diupdate',
+      foto: foto,
+      foto_ktp: foto_ktp,
+      updated: true
+    });
+  });
+});
       foto: foto,
       foto_ktp: foto_ktp,
       updated: true

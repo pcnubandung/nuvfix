@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('./database');
 const multer = require('multer');
+const emailService = require('../helpers/email-service');
 
 // Setup multer for file upload
 const storage = multer.diskStorage({
@@ -48,6 +49,61 @@ const logActivity = (req, action, module, description) => {
         if (err) console.error('Error logging activity:', err);
       }
     );
+  }
+};
+
+// Helper function untuk kirim email notifikasi pembayaran
+const sendPaymentNotification = async (anggotaId, simpananData) => {
+  if (process.env.ENABLE_EMAIL_NOTIFICATIONS !== 'true') return;
+  
+  try {
+    // Get anggota data
+    const anggota = await new Promise((resolve, reject) => {
+      db.get('SELECT nama_lengkap, email FROM anggota WHERE id = ?', [anggotaId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+    
+    if (!anggota || !anggota.email) {
+      console.log('⚠️ Anggota tidak punya email, skip notifikasi');
+      return;
+    }
+    
+    // Get total saldo
+    const saldoTotal = await new Promise((resolve, reject) => {
+      const queries = [
+        'SELECT COALESCE(SUM(jumlah), 0) as total FROM simpanan_pokok WHERE anggota_id = ?',
+        'SELECT COALESCE(SUM(jumlah), 0) as total FROM simpanan_wajib WHERE anggota_id = ?',
+        'SELECT COALESCE(SUM(jumlah), 0) as total FROM simpanan_khusus WHERE anggota_id = ?',
+        'SELECT COALESCE(SUM(jumlah), 0) as total FROM simpanan_sukarela WHERE anggota_id = ?'
+      ];
+      
+      Promise.all(queries.map(q => new Promise((res, rej) => {
+        db.get(q, [anggotaId], (err, row) => {
+          if (err) rej(err);
+          else res(row.total);
+        });
+      }))).then(totals => {
+        resolve(totals.reduce((a, b) => a + b, 0));
+      }).catch(reject);
+    });
+    
+    const emailData = {
+      ...anggota,
+      ...simpananData,
+      saldo_total: saldoTotal
+    };
+    
+    console.log('📧 Sending payment notification to:', anggota.email);
+    
+    if (simpananData.jumlah < 0) {
+      await emailService.sendWithdrawalConfirmationEmail(anggota, emailData);
+    } else {
+      await emailService.sendPaymentConfirmationEmail(anggota, emailData);
+    }
+  } catch (error) {
+    console.error('❌ Failed to send payment notification:', error.message);
   }
 };
 

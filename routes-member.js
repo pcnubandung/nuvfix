@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const emailService = require('../helpers/email-service');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'koperasi-nu-vibes-secret-key-2024';
 const UPLOAD_PATH = process.env.UPLOAD_PATH || path.join(__dirname, 'public', 'uploads');
@@ -228,9 +229,9 @@ router.post('/change-password', authenticateMember, async (req, res) => {
     return res.status(400).json({ error: 'Password baru minimal 6 karakter' });
   }
   
-  // Get current password
+  // Get current password and email
   db.get(
-    'SELECT password FROM anggota WHERE id = ?',
+    'SELECT password, email, nama_lengkap FROM anggota WHERE id = ?',
     [req.user.anggota_id],
     async (err, anggota) => {
       if (err) {
@@ -255,9 +256,20 @@ router.post('/change-password', authenticateMember, async (req, res) => {
       db.run(
         'UPDATE anggota SET password = ? WHERE id = ?',
         [hashedPassword, req.user.anggota_id],
-        (err) => {
+        async (err) => {
           if (err) {
             return res.status(500).json({ error: err.message });
+          }
+          
+          // Send password changed email
+          if (anggota.email && process.env.ENABLE_EMAIL_NOTIFICATIONS === 'true') {
+            try {
+              console.log('📧 Sending password changed email to:', anggota.email);
+              await emailService.sendPasswordChangedEmail(anggota);
+            } catch (emailError) {
+              console.error('❌ Failed to send password changed email:', emailError.message);
+              // Don't fail the request if email fails
+            }
           }
           
           res.json({ message: 'Password berhasil diubah' });
