@@ -13,12 +13,29 @@ const PORT = process.env.PORT || 3000;
 const SECRET_KEY = process.env.JWT_SECRET || 'koperasi-nu-vibes-secret-key-2024';
 const UPLOAD_PATH = process.env.UPLOAD_PATH || path.join(__dirname, 'public', 'uploads');
 
+console.log('🔧 Server Configuration:');
+console.log('  - PORT:', PORT);
+console.log('  - UPLOAD_PATH:', UPLOAD_PATH);
+console.log('  - __dirname:', __dirname);
+console.log('  - Resolved UPLOAD_PATH:', path.resolve(UPLOAD_PATH));
+console.log('  - NODE_ENV:', process.env.NODE_ENV || 'development');
+
 // Ensure upload directory exists
 if (!fs.existsSync(UPLOAD_PATH)) {
   fs.mkdirSync(UPLOAD_PATH, { recursive: true });
   console.log(`✅ Created upload directory: ${UPLOAD_PATH}`);
 } else {
   console.log(`✅ Upload directory exists: ${UPLOAD_PATH}`);
+  // List files in upload directory
+  try {
+    const files = fs.readdirSync(UPLOAD_PATH);
+    console.log(`📁 Files in upload directory: ${files.length} files`);
+    if (files.length > 0 && files.length <= 10) {
+      console.log('   Files:', files.join(', '));
+    }
+  } catch (err) {
+    console.error('❌ Error reading upload directory:', err.message);
+  }
 }
 
 // Middleware
