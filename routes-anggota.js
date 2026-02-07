@@ -70,6 +70,21 @@ router.put('/:id', upload.fields([
   const foto = req.files && req.files['foto'] ? req.files['foto'][0].filename : null;
   const foto_ktp = req.files && req.files['foto_ktp'] ? req.files['foto_ktp'][0].filename : null;
 
+  // Log upload details
+  if (req.files) {
+    console.log('📁 Files uploaded:');
+    if (req.files['foto']) {
+      console.log('  - Foto:', req.files['foto'][0].filename);
+      console.log('    Path:', req.files['foto'][0].path);
+      console.log('    Size:', req.files['foto'][0].size, 'bytes');
+    }
+    if (req.files['foto_ktp']) {
+      console.log('  - Foto KTP:', req.files['foto_ktp'][0].filename);
+      console.log('    Path:', req.files['foto_ktp'][0].path);
+      console.log('    Size:', req.files['foto_ktp'][0].size, 'bytes');
+    }
+  }
+
   let query = `UPDATE anggota SET nomor_anggota = ?, nama_lengkap = ?, nik = ?, tempat_lahir = ?, tanggal_lahir = ?, jenis_kelamin = ?, alamat = ?, nomor_telpon = ?, email = ?, pekerjaan = ?, tanggal_bergabung = ?, status = ?`;
   let params = [nomor_anggota, nama_lengkap, nik, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat, nomor_telpon, email, pekerjaan, tanggal_bergabung, status];
 

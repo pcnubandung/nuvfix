@@ -575,6 +575,44 @@ app.use('/api/karyawan', authenticateToken, karyawanRoutes);
 app.use('/api/aset', authenticateToken, asetRoutes);
 app.use('/api/pengumuman', pengumumanRoutes); // Pengumuman routes (aktif endpoint tidak perlu auth)
 
+// ===== DEBUG ENDPOINT FOR FILE ACCESS =====
+app.get('/api/debug/file/:filename', (req, res) => {
+  const { filename } = req.params;
+  const filePath = path.join(UPLOAD_PATH, filename);
+  
+  console.log('🔍 Debug file access:');
+  console.log('  - Filename:', filename);
+  console.log('  - UPLOAD_PATH:', UPLOAD_PATH);
+  console.log('  - Full path:', filePath);
+  console.log('  - File exists:', fs.existsSync(filePath));
+  
+  if (fs.existsSync(filePath)) {
+    const stats = fs.statSync(filePath);
+    res.json({
+      exists: true,
+      path: filePath,
+      size: stats.size,
+      created: stats.birthtime,
+      modified: stats.mtime,
+      uploadPath: UPLOAD_PATH,
+      accessUrl: `/uploads/${filename}`
+    });
+  } else {
+    // Check if file exists in public/uploads (relative path)
+    const relativePath = path.join(__dirname, 'public', 'uploads', filename);
+    console.log('  - Checking relative path:', relativePath);
+    console.log('  - Relative exists:', fs.existsSync(relativePath));
+    
+    res.json({
+      exists: false,
+      searchedPath: filePath,
+      alternativePath: relativePath,
+      alternativeExists: fs.existsSync(relativePath),
+      uploadPath: UPLOAD_PATH
+    });
+  }
+});
+
 // ===== BULK DELETE ENDPOINTS (Must be after routes to avoid conflicts) =====
 
 // Bulk delete all anggota (except admin users)
