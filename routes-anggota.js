@@ -99,11 +99,20 @@ router.put('/:id', upload.fields([
   params.push(id);
 
   db.run(query, params, function(err) {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      console.error('❌ Update anggota error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+    
+    console.log('✅ Anggota updated successfully');
+    console.log('Foto:', foto);
+    console.log('Foto KTP:', foto_ktp);
+    
     res.json({ 
       message: 'Anggota berhasil diupdate',
       foto: foto,
-      foto_ktp: foto_ktp
+      foto_ktp: foto_ktp,
+      updated: true
     });
   });
 });

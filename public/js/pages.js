@@ -809,7 +809,7 @@ function renderAnggotaTable(updateOnly = false) {
       tbody.innerHTML = sortedData.map((item, index) => `
         <tr>
           <td>${index + 1}</td>
-          <td>${item.foto ? `<img src="/uploads/${item.foto}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 50%;">` : '👤'}</td>
+          <td>${item.foto ? `<img src="/uploads/${item.foto}?t=${Date.now()}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 50%;" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22><text x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>👤</text></svg>'">` : '👤'}</td>
           <td><strong>${item.nomor_anggota}</strong></td>
           <td>${item.nama_lengkap}</td>
           <td>${item.nik || '-'}</td>
@@ -938,7 +938,7 @@ function renderAnggotaTable(updateOnly = false) {
             ${sortedData.map((item, index) => `
               <tr>
                 <td>${index + 1}</td>
-                <td>${item.foto ? `<img src="/uploads/${item.foto}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 50%;">` : '👤'}</td>
+                <td>${item.foto ? `<img src="/uploads/${item.foto}?t=${Date.now()}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 50%;" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22><text x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>👤</text></svg>'">` : '👤'}</td>
                 <td><strong>${item.nomor_anggota}</strong></td>
                 <td>${item.nama_lengkap}</td>
                 <td>${item.nik || '-'}</td>
@@ -5861,7 +5861,7 @@ window.detailAnggota = async function(id) {
       </div>
       
       <div style="text-align: center; margin-bottom: 20px;">
-        ${anggota.foto ? `<img src="/uploads/${anggota.foto}" style="width: 120px; height: 120px; object-fit: cover; border-radius: 50%; border: 4px solid var(--primary-green);">` : '<div style="width: 120px; height: 120px; background: #f0f0f0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 48px;">👤</div>'}
+        ${anggota.foto ? `<img src="/uploads/${anggota.foto}?t=${Date.now()}" style="width: 120px; height: 120px; object-fit: cover; border-radius: 50%; border: 4px solid var(--primary-green);" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">` : ''}<div style="width: 120px; height: 120px; background: #f0f0f0; border-radius: 50%; display: ${anggota.foto ? 'none' : 'inline-flex'}; align-items: center; justify-content: center; font-size: 48px;">👤</div>
       </div>
       
       <div class="form-row">
@@ -6034,7 +6034,7 @@ window.editAnggota = async function(id) {
         <div class="form-row">
           <div class="form-group">
             <label>Foto Profil</label>
-            ${anggota.foto ? `<div style="margin-bottom: 10px;"><img src="/uploads/${anggota.foto}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;"></div>` : ''}
+            ${anggota.foto ? `<div style="margin-bottom: 10px;"><img src="/uploads/${anggota.foto}?t=${Date.now()}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;" onerror="this.style.display='none'"></div>` : ''}
             <input type="file" name="foto" accept="image/*" onchange="previewImage(this, 'previewFotoEdit')">
             <div id="previewFotoEdit" style="margin-top: 10px;"></div>
           </div>
