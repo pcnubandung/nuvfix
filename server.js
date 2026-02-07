@@ -11,12 +11,14 @@ const db = require('./database');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SECRET_KEY = process.env.JWT_SECRET || 'koperasi-nu-vibes-secret-key-2024';
-const UPLOAD_PATH = process.env.UPLOAD_PATH || './uploads';
+const UPLOAD_PATH = process.env.UPLOAD_PATH || path.join(__dirname, 'public', 'uploads');
 
 // Ensure upload directory exists
 if (!fs.existsSync(UPLOAD_PATH)) {
   fs.mkdirSync(UPLOAD_PATH, { recursive: true });
-  console.log(`Created upload directory: ${UPLOAD_PATH}`);
+  console.log(`✅ Created upload directory: ${UPLOAD_PATH}`);
+} else {
+  console.log(`✅ Upload directory exists: ${UPLOAD_PATH}`);
 }
 
 // Middleware
@@ -32,7 +34,7 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '50mb' })); // Increase limit for large payloads
 app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Increase limit for form data
 app.use(express.static('public'));
-app.use('/uploads', express.static(UPLOAD_PATH));
+app.use('/uploads', express.static(UPLOAD_PATH)); // Serve uploads from absolute path
 
 app.use(session({
   secret: SECRET_KEY,
