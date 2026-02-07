@@ -7,6 +7,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const db = require('./database');
+const emailService = require('./helpers/email-service');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,6 +20,36 @@ console.log('  - UPLOAD_PATH:', UPLOAD_PATH);
 console.log('  - __dirname:', __dirname);
 console.log('  - Resolved UPLOAD_PATH:', path.resolve(UPLOAD_PATH));
 console.log('  - NODE_ENV:', process.env.NODE_ENV || 'development');
+
+// Verify email configuration on startup
+if (process.env.ENABLE_EMAIL_NOTIFICATIONS === 'true') {
+  console.log('');
+  console.log('📧 Email Configuration:');
+  console.log('  - HOST:', process.env.EMAIL_HOST || 'NOT SET');
+  console.log('  - PORT:', process.env.EMAIL_PORT || 'NOT SET');
+  console.log('  - SECURE:', process.env.EMAIL_SECURE || 'NOT SET');
+  console.log('  - USER:', process.env.EMAIL_USER || 'NOT SET');
+  console.log('  - PASSWORD:', process.env.EMAIL_PASSWORD ? '***' + process.env.EMAIL_PASSWORD.slice(-4) : 'NOT SET');
+  console.log('  - FROM:', process.env.EMAIL_FROM || 'NOT SET');
+  console.log('');
+  
+  // Verify email config
+  emailService.verifyEmailConfig().then(verified => {
+    if (verified) {
+      console.log('✅ Email notifications are enabled and configured correctly');
+    } else {
+      console.log('⚠️ Email notifications enabled but configuration has issues');
+      console.log('   Check EMAIL_HOST, EMAIL_USER, and EMAIL_PASSWORD');
+    }
+  }).catch(err => {
+    console.error('❌ Email verification error:', err.message);
+  });
+} else {
+  console.log('');
+  console.log('⚠️ Email notifications are DISABLED');
+  console.log('   Set ENABLE_EMAIL_NOTIFICATIONS=true to enable');
+  console.log('');
+}
 
 // Ensure upload directory exists
 if (!fs.existsSync(UPLOAD_PATH)) {
