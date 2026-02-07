@@ -2,12 +2,23 @@ const express = require('express');
 const router = express.Router();
 const db = require('./database');
 const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const emailService = require('./helpers/email-service');
+
+// Use UPLOAD_PATH from environment or default
+const UPLOAD_PATH = process.env.UPLOAD_PATH || path.join(__dirname, 'public', 'uploads');
+
+// Ensure upload directory exists
+if (!fs.existsSync(UPLOAD_PATH)) {
+  fs.mkdirSync(UPLOAD_PATH, { recursive: true });
+  console.log(`✅ Routes-simpanan: Created upload directory: ${UPLOAD_PATH}`);
+}
 
 // Setup multer for file upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => { 
-    cb(null, 'uploads/'); 
+    cb(null, UPLOAD_PATH); 
   },
   filename: (req, file, cb) => { 
     cb(null, Date.now() + '-' + file.originalname); 

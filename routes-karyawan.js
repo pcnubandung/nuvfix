@@ -2,12 +2,32 @@ const express = require('express');
 const router = express.Router();
 const db = require('./database');
 const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Use UPLOAD_PATH from environment or default
+const UPLOAD_PATH = process.env.UPLOAD_PATH || path.join(__dirname, 'public', 'uploads');
+
+// Ensure upload directory exists
+if (!fs.existsSync(UPLOAD_PATH)) {
+  fs.mkdirSync(UPLOAD_PATH, { recursive: true });
+  console.log(`✅ Routes-karyawan: Created upload directory: ${UPLOAD_PATH}`);
+}
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => { cb(null, 'uploads/'); },
-  filename: (req, file, cb) => { cb(null, Date.now() + '-' + file.originalname); }
+  destination: (req, file, cb) => { 
+    cb(null, UPLOAD_PATH); 
+  },
+  filename: (req, file, cb) => { 
+    cb(null, Date.now() + '-' + file.originalname); 
+  }
 });
-const upload = multer({ storage });
+const upload = multer({ 
+  storage,
+  limits: {
+    fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024
+  }
+});
 
 // Get all karyawan
 router.get('/', (req, res) => {
