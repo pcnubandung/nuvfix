@@ -3,7 +3,7 @@ const router = express.Router();
 const db = require('./database');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
-const emailService = require('../helpers/email-service');
+const emailService = require('./helpers/email-service');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => { cb(null, 'uploads/'); },

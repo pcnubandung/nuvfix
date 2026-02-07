@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const emailService = require('../helpers/email-service');
+const emailService = require('./helpers/email-service');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'koperasi-nu-vibes-secret-key-2024';
 const UPLOAD_PATH = process.env.UPLOAD_PATH || path.join(__dirname, 'public', 'uploads');

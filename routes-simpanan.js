@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('./database');
 const multer = require('multer');
-const emailService = require('../helpers/email-service');
+const emailService = require('./helpers/email-service');
 
 // Setup multer for file upload
 const storage = multer.diskStorage({
