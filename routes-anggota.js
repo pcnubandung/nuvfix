@@ -376,6 +376,8 @@ module.exports = router;
 // Download Template Excel
 router.get('/template', async (req, res) => {
   try {
+    console.log('📥 Template download requested');
+    
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Template Anggota');
     
@@ -461,16 +463,21 @@ router.get('/template', async (req, res) => {
     notesSheet.addRow(['- Tanggal Bergabung (default: hari ini)']);
     notesSheet.addRow(['- Status (default: aktif)']);
     
+    console.log('📄 Template workbook created');
+    
     // Set response headers
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=Template_Import_Anggota.xlsx');
     
     // Write to response
     await workbook.xlsx.write(res);
+    
+    console.log('✅ Template downloaded successfully');
     res.end();
     
   } catch (error) {
-    console.error('Template error:', error);
+    console.error('❌ Template error:', error);
+    console.error('   Stack:', error.stack);
     res.status(500).json({ error: error.message });
   }
 });
