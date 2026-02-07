@@ -6,20 +6,33 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'koperasi-nu-vibes-secret-key-2024';
+const UPLOAD_PATH = process.env.UPLOAD_PATH || path.join(__dirname, 'public', 'uploads');
+
+// Ensure upload directory exists
+if (!fs.existsSync(UPLOAD_PATH)) {
+  fs.mkdirSync(UPLOAD_PATH, { recursive: true });
+  console.log(`✅ Member routes: Created upload directory: ${UPLOAD_PATH}`);
+}
 
 // Multer configuration for file upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'public/uploads/');
+    cb(null, UPLOAD_PATH);
   },
   filename: (req, file, cb) => {
     cb(null, Date.now() + path.extname(file.originalname));
   }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ 
+  storage,
+  limits: {
+    fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024 // 5MB default
+  }
+});
 
 // Member Login
 router.post('/login', (req, res) => {
