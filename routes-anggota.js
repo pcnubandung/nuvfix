@@ -465,15 +465,20 @@ router.get('/template', async (req, res) => {
     
     console.log('📄 Template workbook created');
     
+    // Generate buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+    
+    console.log('📦 Buffer generated, size:', buffer.length, 'bytes');
+    
     // Set response headers
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=Template_Import_Anggota.xlsx');
+    res.setHeader('Content-Disposition', 'attachment; filename="Template_Import_Anggota.xlsx"');
+    res.setHeader('Content-Length', buffer.length);
     
-    // Write to response
-    await workbook.xlsx.write(res);
+    // Send buffer
+    res.send(buffer);
     
     console.log('✅ Template downloaded successfully');
-    res.end();
     
   } catch (error) {
     console.error('❌ Template error:', error);
