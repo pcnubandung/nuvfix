@@ -21,8 +21,16 @@ if (!fs.existsSync(UPLOAD_PATH)) {
 
 // Middleware
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Set response headers for better mobile compatibility (but not Content-Type)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  next();
+});
+
+app.use(express.json({ limit: '50mb' })); // Increase limit for large payloads
+app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Increase limit for form data
 app.use(express.static('public'));
 app.use('/uploads', express.static(UPLOAD_PATH));
 
@@ -2073,7 +2081,46 @@ app.get('/api/activity-log/recent', authenticateToken, (req, res) => {
   );
 });
 
-app.listen(PORT, () => {
+// Global error handler for multer and other errors
+app.use((err, req, res, next) => {
+  console.error('❌ Global error handler:', err);
+  
+  // Multer errors
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        success: false,
+        error: 'File terlalu besar. Maksimal 5MB per file.'
+      });
+    }
+    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({
+        success: false,
+        error: 'Terlalu banyak file atau nama field tidak sesuai.'
+      });
+    }
+    return res.status(400).json({
+      success: false,
+      error: 'Error upload file: ' + err.message
+    });
+  }
+  
+  // Other errors
+  if (err.message) {
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+  
+  // Default error
+  res.status(500).json({
+    success: false,
+    error: 'Terjadi kesalahan pada server'
+  });
+});
+
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server berjalan di http://localhost:${PORT}`);
   console.log('Login default: username=admin, password=admin123');
 });
