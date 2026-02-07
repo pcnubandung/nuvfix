@@ -181,12 +181,6 @@ router.put('/:id', upload.fields([
     });
   });
 });
-      foto: foto,
-      foto_ktp: foto_ktp,
-      updated: true
-    });
-  });
-});
 
 // Delete anggota
 router.delete('/:id', (req, res) => {
