@@ -102,89 +102,105 @@ router.put('/profile', authenticateMember, upload.fields([
   { name: 'foto', maxCount: 1 },
   { name: 'foto_ktp', maxCount: 1 }
 ]), (req, res) => {
-  const { 
-    nama_lengkap, 
-    nik, 
-    tempat_lahir, 
-    tanggal_lahir, 
-    jenis_kelamin, 
-    alamat, 
-    nomor_telpon, 
-    email, 
-    pekerjaan 
-  } = req.body;
-  
-  let updateFields = [];
-  let values = [];
-  
-  if (nama_lengkap) {
-    updateFields.push('nama_lengkap = ?');
-    values.push(nama_lengkap);
-  }
-  if (nik) {
-    updateFields.push('nik = ?');
-    values.push(nik);
-  }
-  if (tempat_lahir) {
-    updateFields.push('tempat_lahir = ?');
-    values.push(tempat_lahir);
-  }
-  if (tanggal_lahir) {
-    updateFields.push('tanggal_lahir = ?');
-    values.push(tanggal_lahir);
-  }
-  if (jenis_kelamin) {
-    updateFields.push('jenis_kelamin = ?');
-    values.push(jenis_kelamin);
-  }
-  if (alamat) {
-    updateFields.push('alamat = ?');
-    values.push(alamat);
-  }
-  if (nomor_telpon) {
-    updateFields.push('nomor_telpon = ?');
-    values.push(nomor_telpon);
-  }
-  if (email) {
-    updateFields.push('email = ?');
-    values.push(email);
-  }
-  if (pekerjaan) {
-    updateFields.push('pekerjaan = ?');
-    values.push(pekerjaan);
-  }
-  
-  // Handle foto profil upload
-  if (req.files && req.files.foto && req.files.foto[0]) {
-    updateFields.push('foto = ?');
-    values.push(req.files.foto[0].filename);
-  }
-  
-  // Handle foto KTP upload
-  if (req.files && req.files.foto_ktp && req.files.foto_ktp[0]) {
-    updateFields.push('foto_ktp = ?');
-    values.push(req.files.foto_ktp[0].filename);
-  }
-  
-  if (updateFields.length === 0) {
-    return res.status(400).json({ error: 'Tidak ada data yang diupdate' });
-  }
-  
-  values.push(req.user.anggota_id);
-  
-  const sql = `UPDATE anggota SET ${updateFields.join(', ')} WHERE id = ?`;
-  
-  db.run(sql, values, function(err) {
-    if (err) {
-      return res.status(500).json({ error: err.message });
+  try {
+    console.log('📝 Update profile request received');
+    console.log('Body:', req.body);
+    console.log('Files:', req.files);
+    
+    const { 
+      nama_lengkap, 
+      nik, 
+      tempat_lahir, 
+      tanggal_lahir, 
+      jenis_kelamin, 
+      alamat, 
+      nomor_telpon, 
+      email, 
+      pekerjaan 
+    } = req.body;
+    
+    let updateFields = [];
+    let values = [];
+    
+    if (nama_lengkap) {
+      updateFields.push('nama_lengkap = ?');
+      values.push(nama_lengkap);
+    }
+    if (nik) {
+      updateFields.push('nik = ?');
+      values.push(nik);
+    }
+    if (tempat_lahir) {
+      updateFields.push('tempat_lahir = ?');
+      values.push(tempat_lahir);
+    }
+    if (tanggal_lahir) {
+      updateFields.push('tanggal_lahir = ?');
+      values.push(tanggal_lahir);
+    }
+    if (jenis_kelamin) {
+      updateFields.push('jenis_kelamin = ?');
+      values.push(jenis_kelamin);
+    }
+    if (alamat) {
+      updateFields.push('alamat = ?');
+      values.push(alamat);
+    }
+    if (nomor_telpon) {
+      updateFields.push('nomor_telpon = ?');
+      values.push(nomor_telpon);
+    }
+    if (email) {
+      updateFields.push('email = ?');
+      values.push(email);
+    }
+    if (pekerjaan) {
+      updateFields.push('pekerjaan = ?');
+      values.push(pekerjaan);
     }
     
-    res.json({ 
-      message: 'Profil berhasil diupdate',
-      foto: req.files && req.files.foto ? req.files.foto[0].filename : null,
-      foto_ktp: req.files && req.files.foto_ktp ? req.files.foto_ktp[0].filename : null
+    // Handle foto profil upload
+    if (req.files && req.files.foto && req.files.foto[0]) {
+      updateFields.push('foto = ?');
+      values.push(req.files.foto[0].filename);
+      console.log('Foto uploaded:', req.files.foto[0].filename);
+    }
+    
+    // Handle foto KTP upload
+    if (req.files && req.files.foto_ktp && req.files.foto_ktp[0]) {
+      updateFields.push('foto_ktp = ?');
+      values.push(req.files.foto_ktp[0].filename);
+      console.log('Foto KTP uploaded:', req.files.foto_ktp[0].filename);
+    }
+    
+    if (updateFields.length === 0) {
+      console.log('❌ No fields to update');
+      return res.status(400).json({ error: 'Tidak ada data yang diupdate' });
+    }
+    
+    values.push(req.user.anggota_id);
+    
+    const sql = `UPDATE anggota SET ${updateFields.join(', ')} WHERE id = ?`;
+    console.log('SQL:', sql);
+    console.log('Values:', values);
+    
+    db.run(sql, values, function(err) {
+      if (err) {
+        console.error('❌ Update error:', err);
+        return res.status(500).json({ error: 'Gagal update profil: ' + err.message });
+      }
+      
+      console.log('✅ Profile updated successfully');
+      res.json({ 
+        message: 'Profil berhasil diupdate',
+        foto: req.files && req.files.foto ? req.files.foto[0].filename : null,
+        foto_ktp: req.files && req.files.foto_ktp ? req.files.foto_ktp[0].filename : null
+      });
     });
-  });
+  } catch (error) {
+    console.error('❌ Unexpected error in update profile:', error);
+    res.status(500).json({ error: 'Terjadi kesalahan: ' + error.message });
+  }
 });
 
 // Change password

@@ -852,6 +852,9 @@ function renderAnggotaTable(updateOnly = false) {
       <div class="card-header">
         <h3 class="card-title">Data Anggota</h3>
         <div class="btn-group">
+          <button class="btn btn-danger" onclick="bulkDeleteAnggota()" title="Hapus semua data anggota">
+            <i data-feather="trash-2"></i> Hapus Semua Data
+          </button>
           <button class="btn btn-success" onclick="exportAnggota()">
             <i data-feather="download"></i> Export Excel
           </button>
@@ -1167,6 +1170,39 @@ window.hapusAnggota = async function(id) {
   }
 };
 
+// Bulk Delete All Anggota
+window.bulkDeleteAnggota = async function() {
+  const confirmation = confirm(
+    '⚠️ PERINGATAN KERAS!\n\n' +
+    'Anda akan menghapus SEMUA DATA ANGGOTA!\n\n' +
+    'Tindakan ini akan:\n' +
+    '• Menghapus semua anggota (kecuali yang terkait dengan akun admin)\n' +
+    '• TIDAK DAPAT DIBATALKAN\n' +
+    '• Data yang terhapus TIDAK DAPAT DIKEMBALIKAN\n\n' +
+    'Apakah Anda BENAR-BENAR yakin ingin melanjutkan?'
+  );
+  
+  if (!confirmation) return;
+  
+  // Double confirmation
+  const doubleConfirm = confirm(
+    '⚠️ KONFIRMASI TERAKHIR!\n\n' +
+    'Ini adalah kesempatan terakhir untuk membatalkan.\n\n' +
+    'Klik OK untuk MENGHAPUS SEMUA DATA ANGGOTA\n' +
+    'Klik Cancel untuk membatalkan'
+  );
+  
+  if (!doubleConfirm) return;
+  
+  try {
+    const result = await API.delete('/api/anggota/bulk/all');
+    alert(`✅ ${result.message}\n\n${result.deleted} anggota berhasil dihapus.`);
+    window.renderDataAnggota();
+  } catch (error) {
+    alert(`❌ Gagal menghapus data: ${error.message}`);
+  }
+};
+
 // Import Anggota dari Excel
 window.importAnggota = async function() {
   const modal = document.createElement('div');
@@ -1345,6 +1381,148 @@ window.downloadTemplateAnggota = async function() {
   }
 };
 
+// ===== DATA PENGURUS =====
+window.renderDataPengurus = async function() {
+  try {
+    const pengurus = await API.get('/api/pengurus');
+    const pengurusData = Array.isArray(pengurus) ? pengurus : [];
+    
+    contentArea.innerHTML = `
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Data Pengurus</h3>
+          <div class="btn-group">
+            <button class="btn btn-danger" onclick="bulkDeletePengurus()" title="Hapus semua data pengurus">
+              <i data-feather="trash-2"></i> Hapus Semua Data
+            </button>
+            <button class="btn btn-primary" onclick="tambahPengurus()">
+              <i data-feather="plus"></i> Tambah Pengurus
+            </button>
+          </div>
+        </div>
+        
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Foto</th>
+                <th>No. Anggota</th>
+                <th>Nama Lengkap</th>
+                <th>Jabatan</th>
+                <th>Periode Mulai</th>
+                <th>Periode Selesai</th>
+                <th>Status</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${pengurusData.length === 0 ? `
+                <tr>
+                  <td colspan="9" style="text-align: center; padding: 40px;">
+                    <i data-feather="inbox" style="width: 48px; height: 48px; color: #ccc;"></i>
+                    <p style="margin-top: 10px; color: #999;">Belum ada data pengurus</p>
+                  </td>
+                </tr>
+              ` : pengurusData.map((item, index) => `
+                <tr>
+                  <td>${index + 1}</td>
+                  <td>${item.foto ? `<img src="/uploads/${item.foto}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 50%;">` : '👤'}</td>
+                  <td>${item.nomor_anggota || '-'}</td>
+                  <td>${item.nama_lengkap || '-'}</td>
+                  <td><span class="badge badge-info">${item.jabatan}</span></td>
+                  <td>${item.periode_mulai ? formatDate(item.periode_mulai) : '-'}</td>
+                  <td>${item.periode_selesai ? formatDate(item.periode_selesai) : '-'}</td>
+                  <td><span class="badge badge-${item.status === 'aktif' ? 'success' : 'secondary'}">${item.status || 'aktif'}</span></td>
+                  <td>
+                    <div class="action-buttons">
+                      <button class="btn btn-sm btn-warning" onclick="editPengurus(${item.id})" title="Edit">
+                        <i data-feather="edit"></i>
+                        <span class="btn-text">Edit</span>
+                      </button>
+                      <button class="btn btn-sm btn-danger" onclick="deletePengurus(${item.id})" title="Hapus">
+                        <i data-feather="trash-2"></i>
+                        <span class="btn-text">Hapus</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    
+    feather.replace();
+  } catch (error) {
+    console.error('Error loading pengurus data:', error);
+    contentArea.innerHTML = `
+      <div class="alert alert-danger">
+        <i data-feather="alert-circle"></i>
+        Terjadi kesalahan saat memuat data pengurus: ${error.message}
+      </div>
+    `;
+    feather.replace();
+  }
+};
+
+// Bulk Delete Pengurus
+window.bulkDeletePengurus = async function() {
+  const confirmation = confirm(
+    '⚠️ PERINGATAN KERAS!\n\n' +
+    'Anda akan menghapus SEMUA DATA PENGURUS!\n\n' +
+    'Tindakan ini akan:\n' +
+    '• Menghapus semua data pengurus\n' +
+    '• TIDAK DAPAT DIBATALKAN\n' +
+    '• Data yang terhapus TIDAK DAPAT DIKEMBALIKAN\n\n' +
+    'Apakah Anda BENAR-BENAR yakin ingin melanjutkan?'
+  );
+  
+  if (!confirmation) return;
+  
+  // Double confirmation
+  const doubleConfirm = confirm(
+    '⚠️ KONFIRMASI TERAKHIR!\n\n' +
+    'Ini adalah kesempatan terakhir untuk membatalkan.\n\n' +
+    'Klik OK untuk MENGHAPUS SEMUA DATA PENGURUS\n' +
+    'Klik Cancel untuk membatalkan'
+  );
+  
+  if (!doubleConfirm) return;
+  
+  try {
+    const result = await API.delete('/api/pengurus/bulk/all');
+    alert(`✅ ${result.message}\n\n${result.deleted} data pengurus berhasil dihapus.`);
+    window.renderDataPengurus();
+  } catch (error) {
+    alert(`❌ Gagal menghapus data: ${error.message}`);
+  }
+};
+
+// Tambah Pengurus (placeholder - bisa dikembangkan lebih lanjut)
+window.tambahPengurus = async function() {
+  alert('Fitur tambah pengurus akan segera tersedia');
+};
+
+// Edit Pengurus (placeholder - bisa dikembangkan lebih lanjut)
+window.editPengurus = async function(id) {
+  alert('Fitur edit pengurus akan segera tersedia');
+};
+
+// Delete Pengurus
+window.deletePengurus = async function(id) {
+  if (confirm('Apakah Anda yakin ingin menghapus data pengurus ini?')) {
+    try {
+      const result = await API.delete(`/api/pengurus/${id}`);
+      alert(result.message);
+      window.renderDataPengurus();
+    } catch (error) {
+      alert('Gagal menghapus data: ' + error.message);
+    }
+  }
+};
+
 // Simpanan Page - Unified
 // Global variables for simpanan filter
 let allSimpananData = [];
@@ -1390,6 +1568,9 @@ function renderSimpananTable(anggota) {
       <div class="card-header">
         <h3 class="card-title">Transaksi Simpanan</h3>
         <div class="btn-group">
+          <button class="btn btn-danger" onclick="showBulkDeleteSimpananMenu()" title="Hapus semua data simpanan">
+            <i data-feather="trash-2"></i> Hapus Semua Data
+          </button>
           <button class="btn btn-success" onclick="exportSimpananUnified()">
             <i data-feather="download"></i> Export
           </button>
@@ -1930,6 +2111,102 @@ window.deleteSimpanan = async function(id, jenis) {
   }
 };
 
+// Show Bulk Delete Simpanan Menu
+window.showBulkDeleteSimpananMenu = function() {
+  const modal = document.createElement('div');
+  modal.className = 'modal active';
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 class="modal-title">⚠️ Hapus Semua Data Simpanan</h3>
+        <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
+      </div>
+      <div class="modal-body">
+        <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+          <h4 style="color: #856404; margin-top: 0;">
+            <i data-feather="alert-triangle" style="width: 24px; height: 24px;"></i>
+            PERINGATAN KERAS!
+          </h4>
+          <p style="color: #856404; margin: 10px 0;">
+            Tindakan ini akan menghapus SEMUA data simpanan yang dipilih dan TIDAK DAPAT DIBATALKAN!
+          </p>
+        </div>
+        
+        <p style="margin-bottom: 20px; font-weight: 600;">Pilih jenis simpanan yang ingin dihapus:</p>
+        
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+          <button class="btn btn-danger btn-block" onclick="bulkDeleteSimpanan('pokok')" style="justify-content: flex-start; padding: 15px;">
+            <i data-feather="trash-2"></i>
+            <span>Hapus Semua Simpanan Pokok</span>
+          </button>
+          
+          <button class="btn btn-danger btn-block" onclick="bulkDeleteSimpanan('wajib')" style="justify-content: flex-start; padding: 15px;">
+            <i data-feather="trash-2"></i>
+            <span>Hapus Semua Simpanan Wajib</span>
+          </button>
+          
+          <button class="btn btn-danger btn-block" onclick="bulkDeleteSimpanan('khusus')" style="justify-content: flex-start; padding: 15px;">
+            <i data-feather="trash-2"></i>
+            <span>Hapus Semua Simpanan Khusus</span>
+          </button>
+          
+          <button class="btn btn-danger btn-block" onclick="bulkDeleteSimpanan('sukarela')" style="justify-content: flex-start; padding: 15px;">
+            <i data-feather="trash-2"></i>
+            <span>Hapus Semua Simpanan Sukarela</span>
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Batal</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  feather.replace();
+};
+
+// Bulk Delete Simpanan
+window.bulkDeleteSimpanan = async function(jenis) {
+  const jenisLabel = {
+    'pokok': 'Simpanan Pokok',
+    'wajib': 'Simpanan Wajib',
+    'khusus': 'Simpanan Khusus',
+    'sukarela': 'Simpanan Sukarela'
+  };
+  
+  const confirmation = confirm(
+    `⚠️ PERINGATAN KERAS!\n\n` +
+    `Anda akan menghapus SEMUA DATA ${jenisLabel[jenis].toUpperCase()}!\n\n` +
+    `Tindakan ini:\n` +
+    `• Menghapus semua transaksi ${jenisLabel[jenis]}\n` +
+    `• TIDAK DAPAT DIBATALKAN\n` +
+    `• Data yang terhapus TIDAK DAPAT DIKEMBALIKAN\n\n` +
+    `Apakah Anda BENAR-BENAR yakin?`
+  );
+  
+  if (!confirmation) return;
+  
+  // Double confirmation
+  const doubleConfirm = confirm(
+    `⚠️ KONFIRMASI TERAKHIR!\n\n` +
+    `Klik OK untuk MENGHAPUS SEMUA ${jenisLabel[jenis].toUpperCase()}\n` +
+    `Klik Cancel untuk membatalkan`
+  );
+  
+  if (!doubleConfirm) return;
+  
+  try {
+    const result = await API.delete(`/api/simpanan/${jenis}/bulk/all`);
+    alert(`✅ ${result.message}`);
+    
+    // Close modal and refresh
+    document.querySelector('.modal')?.remove();
+    renderSimpanan();
+  } catch (error) {
+    alert(`❌ Gagal menghapus data: ${error.message}`);
+  }
+};
+
 // Partisipasi Anggota
 window.renderPartisipasiAnggota = async function() {
   try {
@@ -1947,6 +2224,9 @@ window.renderPartisipasiAnggota = async function() {
       <div class="card-header">
         <h3 class="card-title">Partisipasi Anggota</h3>
         <div class="btn-group">
+          <button class="btn btn-danger" onclick="bulkDeletePartisipasi()" title="Hapus semua data partisipasi anggota">
+            <i data-feather="trash-2"></i> Hapus Semua Data
+          </button>
           <button class="btn btn-success" onclick="exportPartisipasiUnified()">
             <i data-feather="download"></i> Export
           </button>
@@ -2255,6 +2535,39 @@ window.deletePartisipasi = async function(id) {
     const result = await API.delete(`/api/partisipasi/${id}`);
     alert(result.message);
     window.renderPartisipasiAnggota();
+  }
+};
+
+// Bulk Delete Partisipasi Anggota
+window.bulkDeletePartisipasi = async function() {
+  const confirmation = confirm(
+    '⚠️ PERINGATAN KERAS!\n\n' +
+    'Anda akan menghapus SEMUA DATA PARTISIPASI ANGGOTA!\n\n' +
+    'Tindakan ini akan:\n' +
+    '• Menghapus semua transaksi partisipasi anggota\n' +
+    '• TIDAK DAPAT DIBATALKAN\n' +
+    '• Data yang terhapus TIDAK DAPAT DIKEMBALIKAN\n\n' +
+    'Apakah Anda BENAR-BENAR yakin ingin melanjutkan?'
+  );
+  
+  if (!confirmation) return;
+  
+  // Double confirmation
+  const doubleConfirm = confirm(
+    '⚠️ KONFIRMASI TERAKHIR!\n\n' +
+    'Ini adalah kesempatan terakhir untuk membatalkan.\n\n' +
+    'Klik OK untuk MENGHAPUS SEMUA DATA PARTISIPASI ANGGOTA\n' +
+    'Klik Cancel untuk membatalkan'
+  );
+  
+  if (!doubleConfirm) return;
+  
+  try {
+    const result = await API.delete('/api/partisipasi/bulk/all');
+    alert(`✅ ${result.message}\n\n${result.deleted} transaksi partisipasi anggota berhasil dihapus.`);
+    window.renderPartisipasiAnggota();
+  } catch (error) {
+    alert(`❌ Gagal menghapus data: ${error.message}`);
   }
 };
 
@@ -3312,10 +3625,47 @@ window.aturKomponenSHU = async function() {
 window.hitungSHU = async function() {
   const tahun = document.getElementById('tahunSHU').value;
   
-  if (confirm(`Hitung SHU untuk tahun ${tahun}? Proses ini akan menghitung ulang SHU semua anggota.`)) {
-    const result = await API.post(`/api/shu/hitung/${tahun}`, {});
-    alert(`${result.message}\n\nSHU Tahun Berjalan: ${formatCurrency(result.keuntunganBersih)}\nTotal Anggota: ${result.totalAnggota}\n\nCatatan: SHU = Laba Kotor - Biaya Operasional\n(Pembelian Barang & Aset tidak termasuk biaya operasional)`);
-    loadSHUData();
+  // Tampilkan dialog untuk memilih periode
+  const periodeChoice = confirm(
+    `Pilih periode untuk perhitungan SHU:\n\n` +
+    `• OK = Seluruh Tahun (akumulasi semua data)\n` +
+    `• Cancel = Tahun ${tahun} saja\n\n` +
+    `Rekomendasi: Pilih "Seluruh Tahun" untuk SHU yang lebih akurat`
+  );
+  
+  const periode = periodeChoice ? 'seluruh' : 'tahunan';
+  const periodeText = periodeChoice ? 'Seluruh Tahun' : `Tahun ${tahun}`;
+  
+  if (confirm(`Hitung SHU untuk ${periodeText}? Proses ini akan menghitung ulang SHU semua anggota.`)) {
+    try {
+      // Kirim request dengan parameter periode
+      const result = await API.post(`/api/shu/hitung/${tahun}`, { periode });
+      
+      // Tampilkan hasil dengan detail lengkap
+      const message = 
+        `${result.message}\n\n` +
+        `📊 DETAIL PERHITUNGAN SHU:\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `💰 Total Penjualan: ${formatCurrency(result.totalPenjualan)}\n` +
+        `💵 Total Pendapatan Lain: ${formatCurrency(result.totalPendapatanLain)}\n` +
+        `📈 Total Pendapatan: ${formatCurrency(result.totalPendapatan)}\n` +
+        `📉 HPP: ${formatCurrency(result.totalHPP)}\n` +
+        `💚 Laba Kotor: ${formatCurrency(result.labaKotor)}\n` +
+        `💸 Biaya Operasional: ${formatCurrency(result.biayaOperasional)}\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `🎯 SHU (Sisa Hasil Usaha): ${formatCurrency(result.keuntunganBersih)}\n` +
+        `👥 Total Anggota Aktif: ${result.totalAnggota}\n` +
+        `📅 Periode: ${result.periode || periodeText}\n\n` +
+        `📝 Formula: SHU = Laba Kotor - Biaya Operasional\n` +
+        `📝 Catatan: Pembelian Barang & Aset tidak termasuk biaya operasional`;
+      
+      alert(message);
+      loadSHUData();
+      
+    } catch (error) {
+      console.error('Error calculating SHU:', error);
+      alert(`Gagal menghitung SHU: ${error.message}`);
+    }
   }
 };
 

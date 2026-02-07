@@ -191,85 +191,133 @@ app.post('/api/register/anggota', upload.fields([
   { name: 'foto_ktp', maxCount: 1 },
   { name: 'pas_foto', maxCount: 1 }
 ]), (req, res) => {
-  const { 
-    nomor_anggota, 
-    nama_lengkap, 
-    nik, 
-    tempat_lahir, 
-    tanggal_lahir, 
-    jenis_kelamin, 
-    alamat, 
-    nomor_telpon, 
-    email, 
-    pekerjaan, 
-    tanggal_bergabung, 
-    username, 
-    password, 
-    status 
-  } = req.body;
-  
-  // Get uploaded files
-  const fotoKTP = req.files && req.files['foto_ktp'] ? req.files['foto_ktp'][0].filename : null;
-  const pasFoto = req.files && req.files['pas_foto'] ? req.files['pas_foto'][0].filename : null;
-
-  // Validate required fields
-  if (!nomor_anggota || !nama_lengkap || !alamat || !nomor_telpon) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Data tidak lengkap. Nama, alamat, dan nomor telepon harus diisi.' 
-    });
-  }
-
-  // Check if nomor_anggota already exists
-  db.get('SELECT id FROM anggota WHERE nomor_anggota = ?', [nomor_anggota], (err, row) => {
-    if (err) {
-      return res.status(500).json({ success: false, message: err.message });
-    }
+  try {
+    console.log('📝 Register anggota request received');
+    console.log('Body:', req.body);
+    console.log('Files:', req.files);
     
-    if (row) {
+    const { 
+      nomor_anggota, 
+      nama_lengkap, 
+      nik, 
+      tempat_lahir, 
+      tanggal_lahir, 
+      jenis_kelamin, 
+      alamat, 
+      nomor_telpon, 
+      email, 
+      pekerjaan, 
+      tanggal_bergabung, 
+      username, 
+      password, 
+      status 
+    } = req.body;
+    
+    // Get uploaded files
+    const fotoKTP = req.files && req.files['foto_ktp'] ? req.files['foto_ktp'][0].filename : null;
+    const pasFoto = req.files && req.files['pas_foto'] ? req.files['pas_foto'][0].filename : null;
+    
+    console.log('Foto KTP:', fotoKTP);
+    console.log('Pas Foto:', pasFoto);
+
+    // Validate required fields
+    if (!nomor_anggota || !nama_lengkap || !alamat || !nomor_telpon) {
+      console.log('❌ Validation failed: missing required fields');
       return res.status(400).json({ 
         success: false, 
-        message: 'Nomor anggota sudah terdaftar. Silakan refresh halaman.' 
+        message: 'Data tidak lengkap. Nama, alamat, dan nomor telepon harus diisi.' 
       });
     }
 
-    // Check if username already exists (if provided)
-    if (username) {
-      db.get('SELECT id FROM anggota WHERE username = ?', [username], (err, row) => {
-        if (err) {
-          return res.status(500).json({ success: false, message: err.message });
-        }
-        
-        if (row) {
-          return res.status(400).json({ 
-            success: false, 
-            message: 'Username sudah digunakan. Silakan pilih username lain.' 
-          });
-        }
+    // Check if nomor_anggota already exists
+    db.get('SELECT id FROM anggota WHERE nomor_anggota = ?', [nomor_anggota], (err, row) => {
+      if (err) {
+        console.error('❌ Database error:', err);
+        return res.status(500).json({ success: false, message: 'Terjadi kesalahan database: ' + err.message });
+      }
+      
+      if (row) {
+        console.log('❌ Nomor anggota already exists');
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Nomor anggota sudah terdaftar. Silakan refresh halaman.' 
+        });
+      }
 
-        // Hash password if provided
-        let hashedPassword = null;
-        if (password) {
-          hashedPassword = bcrypt.hashSync(password, 10);
-        }
+      // Check if username already exists (if provided)
+      if (username) {
+        db.get('SELECT id FROM anggota WHERE username = ?', [username], (err, row) => {
+          if (err) {
+            console.error('❌ Database error:', err);
+            return res.status(500).json({ success: false, message: 'Terjadi kesalahan database: ' + err.message });
+          }
+          
+          if (row) {
+            console.log('❌ Username already exists');
+            return res.status(400).json({ 
+              success: false, 
+              message: 'Username sudah digunakan. Silakan pilih username lain.' 
+            });
+          }
 
-        // Insert new anggota
+            // Hash password if provided
+          let hashedPassword = null;
+          if (password) {
+            hashedPassword = bcrypt.hashSync(password, 10);
+          }
+
+          // Insert new anggota
+          console.log('💾 Inserting new anggota...');
+          db.run(`INSERT INTO anggota (
+            nomor_anggota, nama_lengkap, nik, tempat_lahir, tanggal_lahir, 
+            jenis_kelamin, alamat, nomor_telpon, email, pekerjaan, 
+            tanggal_bergabung, username, password, status, foto, foto_ktp
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              nomor_anggota, nama_lengkap, nik, tempat_lahir, tanggal_lahir,
+              jenis_kelamin, alamat, nomor_telpon, email, pekerjaan,
+              tanggal_bergabung, username, hashedPassword, 'pending',
+              pasFoto, fotoKTP
+            ],
+            function(err) {
+              if (err) {
+                console.error('❌ Insert error:', err);
+                return res.status(500).json({ success: false, message: 'Gagal menyimpan data: ' + err.message });
+              }
+              
+              console.log('✅ Registration successful, ID:', this.lastID);
+              res.json({ 
+                success: true, 
+                message: 'Pendaftaran berhasil',
+                data: {
+                  id: this.lastID,
+                  nomor_anggota: nomor_anggota,
+                  nama_lengkap: nama_lengkap
+                }
+              });
+            }
+          );
+        });
+      } else {
+        // No username provided, insert without checking username
+        console.log('💾 Inserting new anggota (no username)...');
         db.run(`INSERT INTO anggota (
           nomor_anggota, nama_lengkap, nik, tempat_lahir, tanggal_lahir, 
           jenis_kelamin, alamat, nomor_telpon, email, pekerjaan, 
-          tanggal_bergabung, username, password, status, foto, foto_ktp
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          tanggal_bergabung, status, foto, foto_ktp
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             nomor_anggota, nama_lengkap, nik, tempat_lahir, tanggal_lahir,
             jenis_kelamin, alamat, nomor_telpon, email, pekerjaan,
-            tanggal_bergabung, username, hashedPassword, 'pending',
-            pasFoto, fotoKTP
+            tanggal_bergabung, 'pending', pasFoto, fotoKTP
           ],
           function(err) {
             if (err) {
-              return res.status(500).json({ success: false, message: err.message });
+              console.error('❌ Insert error:', err);
+              return res.status(500).json({ success: false, message: 'Gagal menyimpan data: ' + err.message });
             }
             
+            console.log('✅ Registration successful, ID:', this.lastID);
             res.json({ 
               success: true, 
               message: 'Pendaftaran berhasil',
@@ -281,37 +329,15 @@ app.post('/api/register/anggota', upload.fields([
             });
           }
         );
-      });
-    } else {
-      // No username provided, insert without checking username
-      db.run(`INSERT INTO anggota (
-        nomor_anggota, nama_lengkap, nik, tempat_lahir, tanggal_lahir, 
-        jenis_kelamin, alamat, nomor_telpon, email, pekerjaan, 
-        tanggal_bergabung, status, foto, foto_ktp
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          nomor_anggota, nama_lengkap, nik, tempat_lahir, tanggal_lahir,
-          jenis_kelamin, alamat, nomor_telpon, email, pekerjaan,
-          tanggal_bergabung, 'pending', pasFoto, fotoKTP
-        ],
-        function(err) {
-          if (err) {
-            return res.status(500).json({ success: false, message: err.message });
-          }
-          
-          res.json({ 
-            success: true, 
-            message: 'Pendaftaran berhasil',
-            data: {
-              id: this.lastID,
-              nomor_anggota: nomor_anggota,
-              nama_lengkap: nama_lengkap
-            }
-          });
-        }
-      );
-    }
-  });
+      }
+    });
+  } catch (error) {
+    console.error('❌ Unexpected error in register:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Terjadi kesalahan: ' + error.message 
+    });
+  }
 });
 
 // ===== APPROVAL ENDPOINTS =====
@@ -538,6 +564,313 @@ app.use('/api/pengurus', authenticateToken, pengurusRoutes);
 app.use('/api/karyawan', authenticateToken, karyawanRoutes);
 app.use('/api/aset', authenticateToken, asetRoutes);
 app.use('/api/pengumuman', pengumumanRoutes); // Pengumuman routes (aktif endpoint tidak perlu auth)
+
+// ===== BULK DELETE ENDPOINTS (Must be after routes to avoid conflicts) =====
+
+// Bulk delete all anggota (except admin users)
+app.delete('/api/anggota/bulk/all', authenticateToken, (req, res) => {
+  console.log('🗑️ Bulk delete all anggota requested');
+  
+  try {
+    // Get all anggota IDs first
+    db.all('SELECT id FROM anggota', [], (err, allAnggota) => {
+      if (err) {
+        console.error('Error getting all anggota:', err);
+        return res.status(500).json({ error: 'Gagal mengambil data anggota: ' + err.message });
+      }
+      
+      const idsToDelete = allAnggota.map(a => a.id);
+      console.log(`Total anggota: ${idsToDelete.length}`);
+      
+      if (idsToDelete.length === 0) {
+        return res.json({ 
+          message: 'Tidak ada anggota yang dapat dihapus',
+          deleted: 0
+        });
+      }
+      
+      const count = idsToDelete.length;
+      const placeholders = idsToDelete.map(() => '?').join(',');
+      
+      // Delete related data first (to avoid foreign key constraints)
+      db.serialize(() => {
+        console.log('Deleting related data...');
+        
+        // Delete simpanan
+        db.run(`DELETE FROM simpanan_pokok WHERE anggota_id IN (${placeholders})`, idsToDelete, (err) => {
+          if (err) console.error('Error deleting simpanan_pokok:', err);
+          else console.log('✓ Deleted simpanan_pokok');
+        });
+        
+        db.run(`DELETE FROM simpanan_wajib WHERE anggota_id IN (${placeholders})`, idsToDelete, (err) => {
+          if (err) console.error('Error deleting simpanan_wajib:', err);
+          else console.log('✓ Deleted simpanan_wajib');
+        });
+        
+        db.run(`DELETE FROM simpanan_khusus WHERE anggota_id IN (${placeholders})`, idsToDelete, (err) => {
+          if (err) console.error('Error deleting simpanan_khusus:', err);
+          else console.log('✓ Deleted simpanan_khusus');
+        });
+        
+        db.run(`DELETE FROM simpanan_sukarela WHERE anggota_id IN (${placeholders})`, idsToDelete, (err) => {
+          if (err) console.error('Error deleting simpanan_sukarela:', err);
+          else console.log('✓ Deleted simpanan_sukarela');
+        });
+        
+        // Delete partisipasi
+        db.run(`DELETE FROM partisipasi_anggota WHERE anggota_id IN (${placeholders})`, idsToDelete, (err) => {
+          if (err) console.error('Error deleting partisipasi_anggota:', err);
+          else console.log('✓ Deleted partisipasi_anggota');
+        });
+        
+        // Delete SHU
+        db.run(`DELETE FROM shu_anggota WHERE anggota_id IN (${placeholders})`, idsToDelete, (err) => {
+          if (err) console.error('Error deleting shu_anggota:', err);
+          else console.log('✓ Deleted shu_anggota');
+        });
+        
+        // Delete pengurus
+        db.run(`DELETE FROM pengurus WHERE anggota_id IN (${placeholders})`, idsToDelete, (err) => {
+          if (err) console.error('Error deleting pengurus:', err);
+          else console.log('✓ Deleted pengurus');
+        });
+        
+        // Finally, delete anggota
+        db.run(`DELETE FROM anggota WHERE id IN (${placeholders})`, idsToDelete, function(err) {
+          if (err) {
+            console.error('Error bulk deleting anggota:', err);
+            return res.status(500).json({ error: 'Gagal menghapus anggota: ' + err.message });
+          }
+          
+          console.log(`✅ Bulk deleted ${count} anggota and their related data`);
+          res.json({ 
+            message: `Berhasil menghapus ${count} anggota beserta data terkait`,
+            deleted: count
+          });
+        });
+      });
+    });
+  } catch (error) {
+    console.error('Unexpected error in bulk delete:', error);
+    res.status(500).json({ error: 'Terjadi kesalahan: ' + error.message });
+  }
+});
+
+// Bulk delete all simpanan pokok
+app.delete('/api/simpanan/pokok/bulk/all', authenticateToken, (req, res) => {
+  console.log('🗑️ Bulk delete all simpanan pokok requested');
+  
+  db.get('SELECT COUNT(*) as count FROM simpanan_pokok', [], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    const count = row.count;
+    
+    db.run('DELETE FROM simpanan_pokok', [], function(err) {
+      if (err) {
+        console.error('Error bulk deleting simpanan pokok:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      
+      console.log(`✅ Bulk deleted ${count} simpanan pokok`);
+      res.json({ 
+        message: `Berhasil menghapus ${count} transaksi simpanan pokok`,
+        deleted: count
+      });
+    });
+  });
+});
+
+// Bulk delete all simpanan wajib
+app.delete('/api/simpanan/wajib/bulk/all', authenticateToken, (req, res) => {
+  console.log('🗑️ Bulk delete all simpanan wajib requested');
+  
+  db.get('SELECT COUNT(*) as count FROM simpanan_wajib', [], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    const count = row.count;
+    
+    db.run('DELETE FROM simpanan_wajib', [], function(err) {
+      if (err) {
+        console.error('Error bulk deleting simpanan wajib:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      
+      console.log(`✅ Bulk deleted ${count} simpanan wajib`);
+      res.json({ 
+        message: `Berhasil menghapus ${count} transaksi simpanan wajib`,
+        deleted: count
+      });
+    });
+  });
+});
+
+// Bulk delete all simpanan khusus
+app.delete('/api/simpanan/khusus/bulk/all', authenticateToken, (req, res) => {
+  console.log('🗑️ Bulk delete all simpanan khusus requested');
+  
+  db.get('SELECT COUNT(*) as count FROM simpanan_khusus', [], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    const count = row.count;
+    
+    db.run('DELETE FROM simpanan_khusus', [], function(err) {
+      if (err) {
+        console.error('Error bulk deleting simpanan khusus:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      
+      console.log(`✅ Bulk deleted ${count} simpanan khusus`);
+      res.json({ 
+        message: `Berhasil menghapus ${count} transaksi simpanan khusus`,
+        deleted: count
+      });
+    });
+  });
+});
+
+// Bulk delete all simpanan sukarela
+app.delete('/api/simpanan/sukarela/bulk/all', authenticateToken, (req, res) => {
+  console.log('🗑️ Bulk delete all simpanan sukarela requested');
+  
+  db.get('SELECT COUNT(*) as count FROM simpanan_sukarela', [], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    const count = row.count;
+    
+    db.run('DELETE FROM simpanan_sukarela', [], function(err) {
+      if (err) {
+        console.error('Error bulk deleting simpanan sukarela:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      
+      console.log(`✅ Bulk deleted ${count} simpanan sukarela`);
+      res.json({ 
+        message: `Berhasil menghapus ${count} transaksi simpanan sukarela`,
+        deleted: count
+      });
+    });
+  });
+});
+
+// Bulk delete all transaksi penjualan
+app.delete('/api/transaksi/penjualan/bulk/all', authenticateToken, (req, res) => {
+  console.log('🗑️ Bulk delete all transaksi penjualan requested');
+  
+  db.get('SELECT COUNT(*) as count FROM transaksi_penjualan', [], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    const count = row.count;
+    
+    db.run('DELETE FROM transaksi_penjualan', [], function(err) {
+      if (err) {
+        console.error('Error bulk deleting transaksi penjualan:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      
+      console.log(`✅ Bulk deleted ${count} transaksi penjualan`);
+      res.json({ 
+        message: `Berhasil menghapus ${count} transaksi penjualan`,
+        deleted: count
+      });
+    });
+  });
+});
+
+// Bulk delete all pendapatan lain
+app.delete('/api/transaksi/pendapatan-lain/bulk/all', authenticateToken, (req, res) => {
+  console.log('🗑️ Bulk delete all pendapatan lain requested');
+  
+  db.get('SELECT COUNT(*) as count FROM pendapatan_lain', [], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    const count = row.count;
+    
+    db.run('DELETE FROM pendapatan_lain', [], function(err) {
+      if (err) {
+        console.error('Error bulk deleting pendapatan lain:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      
+      console.log(`✅ Bulk deleted ${count} pendapatan lain`);
+      res.json({ 
+        message: `Berhasil menghapus ${count} transaksi pendapatan lain`,
+        deleted: count
+      });
+    });
+  });
+});
+
+// Bulk delete all pengeluaran
+app.delete('/api/transaksi/pengeluaran/bulk/all', authenticateToken, (req, res) => {
+  console.log('🗑️ Bulk delete all pengeluaran requested');
+  
+  db.get('SELECT COUNT(*) as count FROM pengeluaran', [], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    const count = row.count;
+    
+    db.run('DELETE FROM pengeluaran', [], function(err) {
+      if (err) {
+        console.error('Error bulk deleting pengeluaran:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      
+      console.log(`✅ Bulk deleted ${count} pengeluaran`);
+      res.json({ 
+        message: `Berhasil menghapus ${count} transaksi pengeluaran`,
+        deleted: count
+      });
+    });
+  });
+});
+
+// Bulk delete all partisipasi anggota
+app.delete('/api/partisipasi/bulk/all', authenticateToken, (req, res) => {
+  console.log('🗑️ Bulk delete all partisipasi anggota requested');
+  
+  db.get('SELECT COUNT(*) as count FROM partisipasi_anggota', [], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    const count = row.count;
+    
+    db.run('DELETE FROM partisipasi_anggota', [], function(err) {
+      if (err) {
+        console.error('Error bulk deleting partisipasi anggota:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      
+      console.log(`✅ Bulk deleted ${count} partisipasi anggota`);
+      res.json({ 
+        message: `Berhasil menghapus ${count} transaksi partisipasi anggota`,
+        deleted: count
+      });
+    });
+  });
+});
+
+// Bulk delete all pengurus
+app.delete('/api/pengurus/bulk/all', authenticateToken, (req, res) => {
+  console.log('🗑️ Bulk delete all pengurus requested');
+  
+  db.get('SELECT COUNT(*) as count FROM pengurus', [], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    const count = row.count;
+    
+    db.run('DELETE FROM pengurus', [], function(err) {
+      if (err) {
+        console.error('Error bulk deleting pengurus:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      
+      console.log(`✅ Bulk deleted ${count} pengurus`);
+      res.json({ 
+        message: `Berhasil menghapus ${count} data pengurus`,
+        deleted: count
+      });
+    });
+  });
+});
 
 // ===== DASHBOARD STATS =====
 // Test endpoint untuk cek database connection
@@ -1063,23 +1396,75 @@ app.post('/api/shu/komponen', authenticateToken, (req, res) => {
 
 app.post('/api/shu/hitung/:tahun', authenticateToken, (req, res) => {
   const tahun = req.params.tahun;
+  const { periode } = req.body; // Tambahkan parameter periode dari request body
   
-  // Hitung SHU tahun ini dengan formula yang benar:
+  console.log(`Menghitung SHU untuk tahun: ${tahun}, periode: ${periode || 'tahunan'}`);
+  
+  let query, params, periodeText;
+  
+  if (periode === 'seluruh') {
+    // SHU dari SELURUH TAHUN (akumulasi semua data)
+    query = `SELECT 
+            (SELECT COALESCE(SUM(jumlah_penjualan), 0) FROM transaksi_penjualan) +
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pendapatan_lain) -
+            (SELECT COALESCE(SUM(hpp), 0) FROM transaksi_penjualan) -
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pengeluaran 
+             WHERE kategori NOT IN ('Pembelian Barang', 'Pembelian Aset & Inventaris', 'Pembelian Aset')) as keuntungan_bersih,
+            (SELECT COALESCE(SUM(jumlah_penjualan), 0) FROM transaksi_penjualan) as total_penjualan,
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pendapatan_lain) as total_pendapatan_lain,
+            (SELECT COALESCE(SUM(hpp), 0) FROM transaksi_penjualan) as total_hpp,
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pengeluaran 
+             WHERE kategori NOT IN ('Pembelian Barang', 'Pembelian Aset & Inventaris', 'Pembelian Aset')) as biaya_operasional`;
+    params = [];
+    periodeText = 'Seluruh Tahun';
+    console.log('Menghitung SHU dari seluruh tahun (akumulasi semua data)');
+  } else {
+    // SHU berdasarkan tahun tertentu (default)
+    query = `SELECT 
+            (SELECT COALESCE(SUM(jumlah_penjualan), 0) FROM transaksi_penjualan WHERE strftime('%Y', tanggal_transaksi) = ?) +
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pendapatan_lain WHERE strftime('%Y', tanggal_transaksi) = ?) -
+            (SELECT COALESCE(SUM(hpp), 0) FROM transaksi_penjualan WHERE strftime('%Y', tanggal_transaksi) = ?) -
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pengeluaran 
+             WHERE strftime('%Y', tanggal_transaksi) = ? 
+             AND kategori NOT IN ('Pembelian Barang', 'Pembelian Aset & Inventaris', 'Pembelian Aset')) as keuntungan_bersih,
+            (SELECT COALESCE(SUM(jumlah_penjualan), 0) FROM transaksi_penjualan WHERE strftime('%Y', tanggal_transaksi) = ?) as total_penjualan,
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pendapatan_lain WHERE strftime('%Y', tanggal_transaksi) = ?) as total_pendapatan_lain,
+            (SELECT COALESCE(SUM(hpp), 0) FROM transaksi_penjualan WHERE strftime('%Y', tanggal_transaksi) = ?) as total_hpp,
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pengeluaran 
+             WHERE strftime('%Y', tanggal_transaksi) = ? 
+             AND kategori NOT IN ('Pembelian Barang', 'Pembelian Aset & Inventaris', 'Pembelian Aset')) as biaya_operasional`;
+    params = [tahun, tahun, tahun, tahun, tahun, tahun, tahun, tahun];
+    periodeText = `Tahun ${tahun}`;
+    console.log(`Menghitung SHU untuk tahun: ${tahun}`);
+  }
+  
+  // Hitung SHU dengan formula yang benar:
   // Total Pendapatan = Penjualan + Pendapatan Lain
   // Laba Kotor = Total Pendapatan - HPP
   // SHU Tahun Berjalan = Laba Kotor - Biaya Operasional
   // Biaya Operasional = Pengeluaran TANPA Pembelian Barang dan Pembelian Aset
-  db.get(`SELECT 
-          (SELECT COALESCE(SUM(jumlah_penjualan), 0) FROM transaksi_penjualan WHERE strftime('%Y', tanggal_transaksi) = ?) +
-          (SELECT COALESCE(SUM(jumlah), 0) FROM pendapatan_lain WHERE strftime('%Y', tanggal_transaksi) = ?) -
-          (SELECT COALESCE(SUM(hpp), 0) FROM transaksi_penjualan WHERE strftime('%Y', tanggal_transaksi) = ?) -
-          (SELECT COALESCE(SUM(jumlah), 0) FROM pengeluaran 
-           WHERE strftime('%Y', tanggal_transaksi) = ? 
-           AND kategori NOT IN ('Pembelian Barang', 'Pembelian Aset & Inventaris', 'Pembelian Aset')) as keuntungan_bersih`,
-    [tahun, tahun, tahun, tahun], (err, result) => {
-      if (err) return res.status(500).json({ error: err.message });
+  db.get(query, params, (err, result) => {
+      if (err) {
+        console.error('Error calculating SHU:', err);
+        return res.status(500).json({ error: err.message });
+      }
       
       const keuntunganBersih = result.keuntungan_bersih || 0;
+      const totalPenjualan = result.total_penjualan || 0;
+      const totalPendapatanLain = result.total_pendapatan_lain || 0;
+      const totalHPP = result.total_hpp || 0;
+      const biayaOperasional = result.biaya_operasional || 0;
+      const totalPendapatan = totalPenjualan + totalPendapatanLain;
+      const labaKotor = totalPendapatan - totalHPP;
+      
+      console.log('SHU Calculation Results:');
+      console.log(`- Total Penjualan: ${totalPenjualan}`);
+      console.log(`- Total Pendapatan Lain: ${totalPendapatanLain}`);
+      console.log(`- Total Pendapatan: ${totalPendapatan}`);
+      console.log(`- Total HPP: ${totalHPP}`);
+      console.log(`- Laba Kotor: ${labaKotor}`);
+      console.log(`- Biaya Operasional: ${biayaOperasional}`);
+      console.log(`- SHU (Keuntungan Bersih): ${keuntunganBersih}`);
       
       // Get komponen SHU
       db.get('SELECT * FROM komponen_shu WHERE tahun = ?', [tahun], (err, komponen) => {
@@ -1089,12 +1474,26 @@ app.post('/api/shu/hitung/:tahun', authenticateToken, (req, res) => {
         const shuJasaTransaksi = keuntunganBersih * (komponen.jasa_transaksi / 100);
         
         // Hitung total simpanan dan partisipasi per anggota
-        db.all(`SELECT a.id, a.nama_lengkap,
+        let partisipasiQuery, partisipasiParams;
+        if (periode === 'seluruh') {
+          partisipasiQuery = `SELECT a.id, a.nama_lengkap,
+                (SELECT COALESCE(SUM(jumlah), 0) FROM simpanan_pokok WHERE anggota_id = a.id) +
+                (SELECT COALESCE(SUM(jumlah), 0) FROM simpanan_wajib WHERE anggota_id = a.id) +
+                (SELECT COALESCE(SUM(jumlah), 0) FROM simpanan_khusus WHERE anggota_id = a.id) as total_simpanan,
+                (SELECT COALESCE(SUM(jumlah_transaksi), 0) FROM partisipasi_anggota WHERE anggota_id = a.id) as total_partisipasi
+                FROM anggota a WHERE a.status = 'aktif'`;
+          partisipasiParams = [];
+        } else {
+          partisipasiQuery = `SELECT a.id, a.nama_lengkap,
                 (SELECT COALESCE(SUM(jumlah), 0) FROM simpanan_pokok WHERE anggota_id = a.id) +
                 (SELECT COALESCE(SUM(jumlah), 0) FROM simpanan_wajib WHERE anggota_id = a.id) +
                 (SELECT COALESCE(SUM(jumlah), 0) FROM simpanan_khusus WHERE anggota_id = a.id) as total_simpanan,
                 (SELECT COALESCE(SUM(jumlah_transaksi), 0) FROM partisipasi_anggota WHERE anggota_id = a.id AND strftime('%Y', tanggal_transaksi) = ?) as total_partisipasi
-                FROM anggota a WHERE a.status = 'aktif'`, [tahun], (err, anggotaList) => {
+                FROM anggota a WHERE a.status = 'aktif'`;
+          partisipasiParams = [tahun];
+        }
+        
+        db.all(partisipasiQuery, partisipasiParams, (err, anggotaList) => {
           if (err) return res.status(500).json({ error: err.message });
           
           const totalSimpananSemua = anggotaList.reduce((sum, a) => sum + a.total_simpanan, 0);
@@ -1113,7 +1512,19 @@ app.post('/api/shu/hitung/:tahun', authenticateToken, (req, res) => {
               [anggota.id, tahun, shuSimpanan, shuTransaksi, totalShu]);
           });
           
-          res.json({ message: 'SHU berhasil dihitung', keuntunganBersih, totalAnggota: anggotaList.length });
+          res.json({ 
+            message: `SHU ${periodeText} berhasil dihitung`, 
+            keuntunganBersih: keuntunganBersih,
+            totalAnggota: anggotaList.length,
+            totalPendapatan: totalPendapatan,
+            totalPenjualan: totalPenjualan,
+            totalPendapatanLain: totalPendapatanLain,
+            totalHPP: totalHPP,
+            labaKotor: labaKotor,
+            biayaOperasional: biayaOperasional,
+            periode: periodeText,
+            tahun: tahun
+          });
         });
       });
     });

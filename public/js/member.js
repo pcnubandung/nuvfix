@@ -1789,18 +1789,36 @@ async function renderSHU() {
       
     const totalSimpanan = totalPokok + totalWajib + totalKhusus + totalSukarela;
     
-    const totalPartisipasi = partisipasi
-      .filter(p => p.anggota_id === memberData.id)
-      .reduce((sum, p) => sum + p.jumlah_transaksi, 0);
+    // Calculate partisipasi based on selected mode
+    const selectedYear = window.selectedSHUYear || new Date().getFullYear();
+    const selectedMode = window.selectedSHUMode || 'seluruh'; // 'seluruh' atau 'tahunan'
     
-    // Calculate total simpanan and partisipasi from all members
+    let totalPartisipasi, totalPartisipasiSemua;
+    
+    if (selectedMode === 'seluruh') {
+      // Partisipasi dari seluruh tahun
+      totalPartisipasi = partisipasi
+        .filter(p => p.anggota_id === memberData.id)
+        .reduce((sum, p) => sum + p.jumlah_transaksi, 0);
+      
+      totalPartisipasiSemua = partisipasi.reduce((sum, p) => sum + p.jumlah_transaksi, 0);
+    } else {
+      // Partisipasi dari tahun tertentu
+      totalPartisipasi = partisipasi
+        .filter(p => p.anggota_id === memberData.id && new Date(p.tanggal_transaksi).getFullYear() == selectedYear)
+        .reduce((sum, p) => sum + p.jumlah_transaksi, 0);
+      
+      totalPartisipasiSemua = partisipasi
+        .filter(p => new Date(p.tanggal_transaksi).getFullYear() == selectedYear)
+        .reduce((sum, p) => sum + p.jumlah_transaksi, 0);
+    }
+    
+    // Calculate total simpanan from all members
     const totalSimpananSemua = 
       simpananPokok.reduce((sum, s) => sum + s.jumlah, 0) +
       simpananWajib.reduce((sum, s) => sum + s.jumlah, 0) +
       simpananKhusus.reduce((sum, s) => sum + s.jumlah, 0) +
       simpananSukarela.reduce((sum, s) => sum + s.jumlah, 0);
-      
-    const totalPartisipasiSemua = partisipasi.reduce((sum, p) => sum + p.jumlah_transaksi, 0);
     
     // Calculate percentage contribution
     const persenSimpanan = totalSimpananSemua > 0 ? (totalSimpanan / totalSimpananSemua * 100) : 0;
@@ -1815,7 +1833,7 @@ async function renderSHU() {
     let shuStatus = 'Belum Dihitung';
     
     try {
-      const shuData = await API.get(`/api/shu/anggota/${currentYear}`);
+      const shuData = await API.get(`/api/shu/anggota/${selectedYear}`);
       const mySHU = shuData.find(s => s.anggota_id === memberData.id);
       
       if (mySHU) {
@@ -1834,11 +1852,58 @@ async function renderSHU() {
       shuStatus = 'Belum Dihitung';
     }
     
+    // Generate year options
+    const years = [];
+    for (let y = currentYear; y >= currentYear - 5; y--) {
+      years.push(y);
+    }
+    
+    const periodeText = selectedMode === 'seluruh' ? 'Seluruh Tahun' : `Tahun ${selectedYear}`;
+    
     content.innerHTML = `
       <h2 style="font-size: 28px; color: var(--member-text); margin-bottom: 24px;">
         <i data-feather="gift" style="width: 28px; height: 28px; color: var(--member-primary);"></i>
         SHU Saya
       </h2>
+      
+      <!-- Filter Periode -->
+      <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 200px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #555;">
+              <i data-feather="calendar" style="width: 16px; height: 16px;"></i>
+              Periode Perhitungan
+            </label>
+            <select id="shuModeSelect" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+              <option value="seluruh" ${selectedMode === 'seluruh' ? 'selected' : ''}>Seluruh Tahun (Akumulasi)</option>
+              <option value="tahunan" ${selectedMode === 'tahunan' ? 'selected' : ''}>Per Tahun</option>
+            </select>
+          </div>
+          
+          <div id="yearSelectContainer" style="flex: 1; min-width: 200px; ${selectedMode === 'seluruh' ? 'display: none;' : ''}">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #555;">
+              <i data-feather="calendar" style="width: 16px; height: 16px;"></i>
+              Pilih Tahun
+            </label>
+            <select id="shuYearSelect" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+              ${years.map(y => `<option value="${y}" ${y === selectedYear ? 'selected' : ''}>${y}</option>`).join('')}
+            </select>
+          </div>
+          
+          <div style="display: flex; align-items: flex-end;">
+            <button onclick="updateSHUPeriode()" style="padding: 10px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);">
+              <i data-feather="refresh-cw" style="width: 16px; height: 16px;"></i>
+              Update
+            </button>
+          </div>
+        </div>
+        
+        <div style="margin-top: 16px; padding: 12px; background: #f0f7ff; border-radius: 8px; font-size: 14px; color: #1976d2;">
+          <i data-feather="info" style="width: 16px; height: 16px;"></i>
+          <strong>Periode Aktif:</strong> ${periodeText}
+          ${selectedMode === 'seluruh' ? ' - Menampilkan akumulasi dari semua data historis' : ''}
+        </div>
+      </div>
       
       <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 32px; border-radius: 16px; color: white; margin-bottom: 32px; box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);">
         <div style="display: flex; align-items: center; gap: 24px; margin-bottom: 16px;">
@@ -1847,7 +1912,7 @@ async function renderSHU() {
           </div>
           <div>
             <h3 style="font-size: 18px; margin-bottom: 8px; opacity: 0.9;">
-              ${shuStatus === 'Sudah Dihitung' ? 'SHU' : 'Estimasi SHU'} Tahun ${currentYear}
+              ${shuStatus === 'Sudah Dihitung' ? 'SHU' : 'Estimasi SHU'} ${periodeText}
             </h3>
             <div style="font-size: 42px; font-weight: 700;">${formatCurrency(estimasiSHU)}</div>
             <div style="font-size: 14px; opacity: 0.8; margin-top: 8px;">
@@ -1858,7 +1923,7 @@ async function renderSHU() {
         <p style="opacity: 0.9; margin: 0;">
           <i data-feather="info" style="width: 16px; height: 16px;"></i>
           ${shuStatus === 'Sudah Dihitung' 
-            ? 'SHU sudah dihitung oleh admin berdasarkan laba bersih koperasi' 
+            ? `SHU sudah dihitung oleh admin berdasarkan laba bersih koperasi (${periodeText})` 
             : 'SHU belum dihitung. Hubungi admin untuk perhitungan SHU'}
         </p>
       </div>
@@ -1886,7 +1951,7 @@ async function renderSHU() {
           <div class="stat-body">
             <h3>Total Partisipasi</h3>
             <div class="stat-value">${formatCurrency(totalPartisipasi)}</div>
-            <div class="stat-label">${persenPartisipasi.toFixed(2)}% dari total koperasi</div>
+            <div class="stat-label">${persenPartisipasi.toFixed(2)}% dari total (${periodeText})</div>
           </div>
         </div>
         
@@ -2827,7 +2892,8 @@ function generateStrukHTML(data) {
       <div class="header">
         <h2>${koperasiInfo.nama_koperasi || 'Koperasi NU Vibes'}</h2>
         <div class="address">${koperasiInfo.alamat || 'Gedung Dakwah NU Kota Bandung, Jl. Sancang No. 8 Kota Bandung'}</div>
-        <div class="contact">Telp: ${koperasiInfo.nomor_telpon || '+628211281926'} | Email: ${koperasiInfo.email || 'koperasi@nukotabandung.or.id'}</div>
+        <div class="contact">Telp: ${koperasiInfo.nomor_telpon || '+628211281926'}</div>
+        <div class="contact">Website: nuvibes.nukotabandung.or.id</div>
         <div style="margin-top: 12px;">
           <span class="badge">STRUK PEMBAYARAN</span>
         </div>
@@ -3032,4 +3098,29 @@ function generateStrukHTML(data) {
   `;
 }
 
+// Update SHU Periode
+window.updateSHUPeriode = async function() {
+  const modeSelect = document.getElementById('shuModeSelect');
+  const yearSelect = document.getElementById('shuYearSelect');
+  
+  if (!modeSelect) return;
+  
+  window.selectedSHUMode = modeSelect.value;
+  window.selectedSHUYear = yearSelect ? parseInt(yearSelect.value) : new Date().getFullYear();
+  
+  // Re-render SHU page with new periode
+  await renderSHU();
+};
+
+// Event listener for mode change
+document.addEventListener('change', function(e) {
+  if (e.target.id === 'shuModeSelect') {
+    const yearContainer = document.getElementById('yearSelectContainer');
+    if (yearContainer) {
+      yearContainer.style.display = e.target.value === 'seluruh' ? 'none' : 'block';
+    }
+  }
+});
+
 console.log('✅ Download struk pembayaran feature loaded successfully');
+console.log('✅ SHU periode selection feature loaded successfully');

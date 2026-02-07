@@ -743,6 +743,9 @@ window.renderPenjualan = async function() {
       <div class="card-header">
         <h3 class="card-title">Hasil Penjualan</h3>
         <div class="btn-group">
+          <button class="btn btn-danger" onclick="bulkDeletePenjualan()" title="Hapus semua data penjualan">
+            <i data-feather="trash-2"></i> Hapus Semua Data
+          </button>
           <button class="btn btn-success" onclick="exportPenjualan()">
             <i data-feather="download"></i> Export
           </button>
@@ -944,6 +947,9 @@ window.renderPengeluaran = async function() {
       <div class="card-header">
         <h3 class="card-title">Pengeluaran</h3>
         <div class="btn-group">
+          <button class="btn btn-danger" onclick="bulkDeletePengeluaran()" title="Hapus semua data pengeluaran">
+            <i data-feather="trash-2"></i> Hapus Semua Data
+          </button>
           <button class="btn btn-success" onclick="exportPengeluaran()">
             <i data-feather="download"></i> Export
           </button>
@@ -1561,6 +1567,9 @@ window.renderPendapatanLain = async function() {
       <div class="card-header">
         <h3 class="card-title">Pendapatan Lain</h3>
         <div class="btn-group">
+          <button class="btn btn-danger" onclick="bulkDeletePendapatanLain()" title="Hapus semua data pendapatan lain">
+            <i data-feather="trash-2"></i> Hapus Semua Data
+          </button>
           <button class="btn btn-success" onclick="exportPendapatanLain()">
             <i data-feather="download"></i> Export
           </button>
@@ -2396,3 +2405,107 @@ window.cetakPendapatanLain = async function() {
 
 
 // End of pages-transaksi.js
+
+
+// ===== BULK DELETE FUNCTIONS =====
+
+// Bulk Delete Penjualan
+window.bulkDeletePenjualan = async function() {
+  const confirmation = confirm(
+    '⚠️ PERINGATAN KERAS!\n\n' +
+    'Anda akan menghapus SEMUA DATA PENJUALAN!\n\n' +
+    'Tindakan ini akan:\n' +
+    '• Menghapus semua transaksi penjualan\n' +
+    '• TIDAK DAPAT DIBATALKAN\n' +
+    '• Data yang terhapus TIDAK DAPAT DIKEMBALIKAN\n\n' +
+    'Apakah Anda BENAR-BENAR yakin ingin melanjutkan?'
+  );
+  
+  if (!confirmation) return;
+  
+  // Double confirmation
+  const doubleConfirm = confirm(
+    '⚠️ KONFIRMASI TERAKHIR!\n\n' +
+    'Ini adalah kesempatan terakhir untuk membatalkan.\n\n' +
+    'Klik OK untuk MENGHAPUS SEMUA DATA PENJUALAN\n' +
+    'Klik Cancel untuk membatalkan'
+  );
+  
+  if (!doubleConfirm) return;
+  
+  try {
+    const result = await API.delete('/api/transaksi/penjualan/bulk/all');
+    alert(`✅ ${result.message}\n\n${result.deleted} transaksi penjualan berhasil dihapus.`);
+    window.renderPenjualan();
+  } catch (error) {
+    alert(`❌ Gagal menghapus data: ${error.message}`);
+  }
+};
+
+// Bulk Delete Pendapatan Lain
+window.bulkDeletePendapatanLain = async function() {
+  const confirmation = confirm(
+    '⚠️ PERINGATAN KERAS!\n\n' +
+    'Anda akan menghapus SEMUA DATA PENDAPATAN LAIN!\n\n' +
+    'Tindakan ini akan:\n' +
+    '• Menghapus semua transaksi pendapatan lain\n' +
+    '• TIDAK DAPAT DIBATALKAN\n' +
+    '• Data yang terhapus TIDAK DAPAT DIKEMBALIKAN\n\n' +
+    'Apakah Anda BENAR-BENAR yakin ingin melanjutkan?'
+  );
+  
+  if (!confirmation) return;
+  
+  // Double confirmation
+  const doubleConfirm = confirm(
+    '⚠️ KONFIRMASI TERAKHIR!\n\n' +
+    'Ini adalah kesempatan terakhir untuk membatalkan.\n\n' +
+    'Klik OK untuk MENGHAPUS SEMUA DATA PENDAPATAN LAIN\n' +
+    'Klik Cancel untuk membatalkan'
+  );
+  
+  if (!doubleConfirm) return;
+  
+  try {
+    const result = await API.delete('/api/transaksi/pendapatan-lain/bulk/all');
+    alert(`✅ ${result.message}\n\n${result.deleted} transaksi pendapatan lain berhasil dihapus.`);
+    window.renderPendapatanLain();
+  } catch (error) {
+    alert(`❌ Gagal menghapus data: ${error.message}`);
+  }
+};
+
+// Bulk Delete Pengeluaran
+window.bulkDeletePengeluaran = async function() {
+  const confirmation = confirm(
+    '⚠️ PERINGATAN KERAS!\n\n' +
+    'Anda akan menghapus SEMUA DATA PENGELUARAN!\n\n' +
+    'Tindakan ini akan:\n' +
+    '• Menghapus semua transaksi pengeluaran\n' +
+    '• TIDAK DAPAT DIBATALKAN\n' +
+    '• Data yang terhapus TIDAK DAPAT DIKEMBALIKAN\n\n' +
+    'Apakah Anda BENAR-BENAR yakin ingin melanjutkan?'
+  );
+  
+  if (!confirmation) return;
+  
+  // Double confirmation
+  const doubleConfirm = confirm(
+    '⚠️ KONFIRMASI TERAKHIR!\n\n' +
+    'Ini adalah kesempatan terakhir untuk membatalkan.\n\n' +
+    'Klik OK untuk MENGHAPUS SEMUA DATA PENGELUARAN\n' +
+    'Klik Cancel untuk membatalkan'
+  );
+  
+  if (!doubleConfirm) return;
+  
+  try {
+    const result = await API.delete('/api/transaksi/pengeluaran/bulk/all');
+    alert(`✅ ${result.message}\n\n${result.deleted} transaksi pengeluaran berhasil dihapus.`);
+    window.renderPengeluaran();
+  } catch (error) {
+    alert(`❌ Gagal menghapus data: ${error.message}`);
+  }
+};
+
+console.log('✅ Bulk delete functions loaded successfully');
